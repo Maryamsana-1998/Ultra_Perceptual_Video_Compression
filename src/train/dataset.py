@@ -22,10 +22,10 @@ class UniDataset(Dataset):
                  drop_each_cond_prob):
         
         file_ids, self.annos = read_anno(anno_path)
-        self.image_paths = [os.path.join(image_dir, file_id + '.jpg') for file_id in file_ids]
+        self.image_paths = [os.path.join(image_dir, file_id + '.png') for file_id in file_ids]
         self.local_paths = {}
         for local_type in local_type_list:
-            self.local_paths[local_type] = [os.path.join(condition_root, local_type, file_id + '.jpg') for file_id in file_ids]
+            self.local_paths[local_type] = [os.path.join(condition_root, local_type, file_id + '.png') for file_id in file_ids]
         self.global_paths = {}
         for global_type in global_type_list:
             self.global_paths[global_type] = [os.path.join(condition_root, global_type, file_id + '.npy') for file_id in file_ids]

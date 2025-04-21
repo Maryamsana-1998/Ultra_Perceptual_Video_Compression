@@ -12,7 +12,7 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 class ImageLogger(Callback):
     def __init__(self, batch_frequency=2000, max_images=4, clamp=True, increase_log_steps=True,
                  rescale=True, disabled=False, log_on_batch_idx=False, log_first_step=False,
-                 log_images_kwargs=None, num_local_conditions=7):
+                 log_images_kwargs=None, num_local_conditions=2):
         super().__init__()
         self.rescale = rescale
         self.batch_freq = batch_frequency
