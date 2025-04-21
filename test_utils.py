@@ -6,7 +6,7 @@ from PIL import Image
 from torchmetrics.image.fid import FrechetInceptionDistance
 import lpips
 import matplotlib.pyplot as plt
-from benchmark.fvd_utils.my_utils import calculate_fvd
+from fvd_utils.my_utils import calculate_fvd
 
 
 # Initialize LPIPS and FID models
