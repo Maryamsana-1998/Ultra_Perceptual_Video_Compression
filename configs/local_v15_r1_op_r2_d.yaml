@@ -83,7 +83,7 @@ data:
   target: src.train.video_dataset.UniDataset
   params:
     anno_path: data/captions.txt
-    root_dir: data/sequences/
+    root_dir: /data2/local_datasets/vimeo_sequences/
     local_type_list: [r1,r2,flow,depth]
     global_type_list: []
     resolution: 512
