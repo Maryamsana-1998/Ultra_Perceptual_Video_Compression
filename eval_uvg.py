@@ -13,14 +13,14 @@ from src.test.test_codec import process_images
 from test_utils import calculate_metrics_batch
 
 video_details = {
-    "Beauty": {
-        "prompt": "A beautiful blonde girl smiling with pink lipstick with black background",
-        "path": "Beauty"
-    },
-    "Jockey": {
-        "prompt": "A man riding a brown horse, galloping through a green race track. The man is wearing a yellow and red shirt and also a yellow hat",
-        "path": "Jockey"
-    },
+    # "Beauty": {
+    #     "prompt": "A beautiful blonde girl smiling with pink lipstick with black background",
+    #     "path": "Beauty"
+    # },
+    # "Jockey": {
+    #     "prompt": "A man riding a brown horse, galloping through a green race track. The man is wearing a yellow and red shirt and also a yellow hat",
+    #     "path": "Jockey"
+    # },
     "Bosphorus": {
         "prompt": "A man and a woman sitting together on a boat sailing in water. They are both wearing ties. There is also a red flag at end of boat",
         "path": "Bosphorus"
@@ -82,7 +82,7 @@ def main():
         original_folder = os.path.join(args.original_root, video, f"{args.resolution}")
         optical_flow_folder = os.path.join(args.original_root, video, f"{args.resolution}", f"optical_flow_gop_{args.gop}")
         previous_frame_folder = os.path.join(args.original_root, video, f"{args.resolution}", f"decoded_q{args.intra_quality}")
-        pred_folder = os.path.join(args.pred_root, video, args.resolution, f"quality_{args.intra_quality}")
+        pred_folder = os.path.join(args.pred_root, video, args.resolution)
 
         image_paths = sorted(glob.glob(os.path.join(original_folder, "*.png")))
         flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.png")))
@@ -114,36 +114,36 @@ def main():
                 dpi=300
             )
 
-        original_eval_images = []
-        pred_eval_images = []
-        for i in range(2, len(image_paths)):
-            # print(original_folder,)
-            original_path = os.path.join(original_folder, f"frame_{i-1:04d}.png")
-            pred_path = os.path.join(pred_folder, f"im{i:05d}_pred.png")
-            # print(original_folder,original_path, pred_path)
+    #     original_eval_images = []
+    #     pred_eval_images = []
+    #     for i in range(2, len(image_paths)):
+    #         # print(original_folder,)
+    #         original_path = os.path.join(original_folder, f"frame_{i-1:04d}.png")
+    #         pred_path = os.path.join(pred_folder, f"im{i:05d}_pred.png")
+    #         # print(original_folder,original_path, pred_path)
 
-            if os.path.exists(original_path) and os.path.exists(pred_path):
-                original_eval_images.append(Image.open(original_path).convert("RGB"))
-                pred_eval_images.append(Image.open(pred_path).convert("RGB"))
-            else:
-                print(f"Warning: Missing image for {video} frame {i}")
+    #         if os.path.exists(original_path) and os.path.exists(pred_path):
+    #             original_eval_images.append(Image.open(original_path).convert("RGB"))
+    #             pred_eval_images.append(Image.open(pred_path).convert("RGB"))
+    #         else:
+    #             print(f"Warning: Missing image for {video} frame {i}")
 
-        if original_eval_images and pred_eval_images:
-            metrics = calculate_metrics_batch(original_eval_images, pred_eval_images)
-            all_metrics[video] = metrics
-            print(f"Metrics for {video}:", metrics)
-        else:
-            print(f"No images found or incomplete data for video {video}. Skipping metrics.")
+    #     if original_eval_images and pred_eval_images:
+    #         metrics = calculate_metrics_batch(original_eval_images, pred_eval_images)
+    #         all_metrics[video] = metrics
+    #         print(f"Metrics for {video}:", metrics)
+    #     else:
+    #         print(f"No images found or incomplete data for video {video}. Skipping metrics.")
 
-    print("\nFinal Metrics Summary for All Videos:")
-    for video, metrics in all_metrics.items():
-        print(f"{video} Metrics: {metrics}")
+    # print("\nFinal Metrics Summary for All Videos:")
+    # for video, metrics in all_metrics.items():
+    #     print(f"{video} Metrics: {metrics}")
 
-    metrics_json_path = os.path.join(args.pred_root, f"all_videos_metrics_{args.resolution}_q{args.intra_quality}.json")
-    with open(metrics_json_path, "w") as f:
-        json.dump(all_metrics, f, indent=4)
+    # metrics_json_path = os.path.join(args.pred_root, f"all_videos_metrics_{args.resolution}_q{args.intra_quality}.json")
+    # with open(metrics_json_path, "w") as f:
+    #     json.dump(all_metrics, f, indent=4)
 
-    print(f"\nAll metrics saved to {metrics_json_path}")
+    # print(f"\nAll metrics saved to {metrics_json_path}")
 
 if __name__ == "__main__":
     main()
