@@ -1,5 +1,5 @@
 model:
-  target: models.uni_controlnet.UniControlNet
+  target: models.uni_controlnet_lpips.UniControlNet
   params:
     linear_start: 0.00085
     linear_end: 0.0120
@@ -16,7 +16,7 @@ model:
     scale_factor: 0.18215
     use_ema: False
     mode: local
-    # perceptual_weight: 0.075
+    perceptual_weight: 0.075
 
     local_control_config:
       target: models.local_adapter.LocalAdapter
