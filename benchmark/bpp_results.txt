@@ -1,4 +1,4 @@
-Filename,Bits,Resolution,Frames,BPP
+Filename,BPP
 Beauty_1920x1080_120fps_420_8bit_YUV.yuv_h264_crf18_gop8.mp4,.941359
 Beauty_1920x1080_120fps_420_8bit_YUV.yuv_h264_crf23_gop8.mp4,.191023
 Beauty_1920x1080_120fps_420_8bit_YUV.yuv_h264_crf28_gop8.mp4,.049484

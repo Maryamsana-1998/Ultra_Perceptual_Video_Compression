@@ -13,14 +13,14 @@ from src.test.test_codec import process_images
 from test_utils import calculate_metrics_batch
 
 video_details = {
-    # "Beauty": {
-    #     "prompt": "A beautiful blonde girl smiling with pink lipstick with black background",
-    #     "path": "Beauty"
-    # },
-    # "Jockey": {
-    #     "prompt": "A man riding a brown horse, galloping through a green race track. The man is wearing a yellow and red shirt and also a yellow hat",
-    #     "path": "Jockey"
-    # },
+    "Beauty": {
+        "prompt": "A beautiful blonde girl smiling with pink lipstick with black background",
+        "path": "Beauty"
+    },
+    "Jockey": {
+        "prompt": "A man riding a brown horse, galloping through a green race track. The man is wearing a yellow and red shirt and also a yellow hat",
+        "path": "Jockey"
+    },
     "Bosphorus": {
         "prompt": "A man and a woman sitting together on a boat sailing in water. They are both wearing ties. There is also a red flag at end of boat",
         "path": "Bosphorus"

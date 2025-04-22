@@ -13,7 +13,7 @@ from pytorch_lightning import seed_everything
 from annotator.util import HWC3
 from models.util import create_model, load_state_dict
 from models.ddim_hacked import DDIMSampler
-import glob
+from pathlib import Path
 import os
 from PIL import Image
 import numpy as np
@@ -191,29 +191,36 @@ def process_images(config_path, ckpt_path, image_paths, canny_paths, prompt, pre
     # Process each image up to the specified number
     for i in range(0, len(original_images)):
 
+        pred_image_path = os.path.join(pred_folder, f"im{(i + 1):05d}_pred.png")
+
         if i % gop == 0: 
             print('Intra Coded: ', previous_frames_paths_gop[i])
             pred_image = previous_frames[i]
+            cv2.imwrite(pred_image_path, cv2.cvtColor(pred_image, cv2.COLOR_RGB2BGR))
 
         else:
-            print('Inter Coded with :', canny_paths[inter_indices.index(i)] ,previous_frames_paths_gop[i] )
-            canny_image = canny_images[inter_indices.index(i)]
-            frame_image = previous_frames[i]
-    
-            pred_image = get_recons_img(
-                model,
-                prompt=prompt,
-                canny_image=canny_image,
-                frame_image=frame_image
-            )
 
-        predictions.append(pred_image)
+            if Path(pred_image_path).exists():
 
-        # Save prediction image
-        pred_image_path = os.path.join(pred_folder, f"im{(i + 1):05d}_pred.png")
-        cv2.imwrite(pred_image_path, cv2.cvtColor(pred_image, cv2.COLOR_RGB2BGR))
+                pred_image = cv2.imread(pred_image_path)
+                pred_image = cv2.cvtColor(pred_image, cv2.COLOR_BGR2RGB)
+                print('already done')
+                continue
+            else:
+                print('Inter Coded with :', canny_paths[inter_indices.index(i)] ,previous_frames_paths_gop[i] )
+                canny_image = canny_images[inter_indices.index(i)]
+                frame_image = previous_frames[i]
+        
+                pred_image = get_recons_img(
+                    model,
+                    prompt=prompt,
+                    canny_image=canny_image,
+                    frame_image=frame_image
+                )
+                cv2.imwrite(pred_image_path, cv2.cvtColor(pred_image, cv2.COLOR_RGB2BGR))
+                print(f"Saved prediction image: {pred_image_path}")
 
-        print(f"Saved prediction image: {pred_image_path}")
-
+            predictions.append(pred_image)
+             
     # Return the original and predicted images
     return original_images, predictions

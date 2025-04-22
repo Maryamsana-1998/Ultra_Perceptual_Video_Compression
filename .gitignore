@@ -178,3 +178,4 @@ log_local/
 benchmark/test_codec
 fvd_utils/models/fvd/*.pt
 benchmark/unicontrol*/
+experiments/*

@@ -26,53 +26,57 @@ def psnr(a: torch.Tensor, b: torch.Tensor, max_val: int = 255) -> float:
 
 def calculate_metrics_batch(original_images, pred_images):
     """
-    Efficiently calculates PSNR, MS-SSIM, LPIPS, FID and FVD for a batch.
+    Calculates PSNR, MS-SSIM, LPIPS, and FID metrics for a batch of image pairs.
+    
     Args:
-        original_images (list[PIL.Image]): originals
-        pred_images     (list[PIL.Image]): predictions
+        original_images (list): List of PIL images for the original images.
+        pred_images (list): List of PIL images for the predicted images.
+    
     Returns:
-        dict: {PSNR, MS-SSIM, LPIPS, FID, FVD}
+        dict: Dictionary with metrics for the batch.
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    psnr_values, ms_ssim_values, lpips_values = [], [], []
+    fid_model.reset()  # Clear any previous FID data
+    org_frames =[]
+    pred_frames =[]
+    # Loop over the image pairs
+    for original_image, pred_image in zip(original_images, pred_images):
+        # Transform images
+        original_tensor = transform(original_image).unsqueeze(0).to('cuda' if torch.cuda.is_available() else 'cpu')
+        pred_tensor = transform(pred_image).unsqueeze(0).to('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # Calculate PSNR and MS-SSIM
+        psnr_value = psnr(original_tensor, pred_tensor).item()
+        # print(psnr_value)
+        if psnr_value > 1000:
+            continue
+        else:
+            psnr_values.append(psnr_value)
+        ms_ssim_values.append(ms_ssim(original_tensor, pred_tensor, data_range=255, size_average=True).item())
 
-    # 1) Transform all images and stack into batched tensors once
-    orig_tensors = torch.stack([transform(img) for img in original_images], dim=0).to(device)
-    pred_tensors = torch.stack([transform(img) for img in pred_images],  dim=0).to(device)
+        # Calculate LPIPS
+        lpips_value = lpips_model(original_tensor / 255.0, pred_tensor / 255.0).item()
+        lpips_values.append(lpips_value)
 
-    # 2) Compute PSNR per frame
-    psnr_vals = psnr(orig_tensors, pred_tensors)              # shape [N]
-    # filter out absurd values
-    valid_mask = psnr_vals <= 1000
-    psnr_vals = psnr_vals[valid_mask]
+        # Add tensors to FID model
+        fid_model.update(original_tensor.to(torch.uint8), real=True)
+        fid_model.update(pred_tensor.to(torch.uint8), real=False)
 
-    # 3) Compute MS-SSIM per frame
-    ms_ssim_vals = ms_ssim(orig_tensors, pred_tensors,
-                           data_range=255, size_average=False)  # shape [N]
-    ms_ssim_vals = ms_ssim_vals[valid_mask]
+        org_frames.append(original_tensor)
+        pred_frames.append(pred_tensor )
 
-    # 4) Compute LPIPS per frame (expects inputs in [0,1])
-    lpips_vals = lpips_model(orig_tensors/255.0, pred_tensors/255.0)
-    lpips_vals = lpips_vals.view(-1)[valid_mask]
-
-    # 5) Compute FID in one go
-    fid_model.reset()
-    fid_model.update(orig_tensors.to(torch.uint8), real=True)
-    fid_model.update(pred_tensors.to(torch.uint8), real=False)
+    # Prepare 5D tensors for FVD: (B, T, C, H, W)
+    org_video = torch.stack(org_frames, dim=0).permute(1, 0, 2, 3, 4).repeat(2, 1, 1, 1, 1)
+    pred_video = torch.stack(pred_frames, dim=0).permute(1, 0, 2, 3, 4).repeat(2, 1, 1, 1, 1)
+    
+    # Compute metrics
     fid_value = fid_model.compute().item()
-
-    # 6) Prepare for FVD: (B, T, C, H, W).  
-    #    Here we assume B=1, T=N, so we reshape accordingly.
-    #    If your FVD expects different layout, adjust permute.
-    org_video  = orig_tensors.unsqueeze(0)  # [1, N, C, H, W]
-    pred_video = pred_tensors.unsqueeze(0)
-    # some FVD implementations want longer sequences; you can repeat if needed
     fvd_value = calculate_fvd(org_video, pred_video)
 
-    # 7) Aggregate
     return {
-        "PSNR":    psnr_vals.mean().item(),
-        "MS-SSIM": ms_ssim_vals.mean().item(),
-        "LPIPS":   lpips_vals.mean().item(),
-        "FID":     fid_value,
-        "FVD":     fvd_value
+        "PSNR": sum(psnr_values) / len(psnr_values),
+        "MS-SSIM": sum(ms_ssim_values) / len(ms_ssim_values),
+        "LPIPS": sum(lpips_values) / len(lpips_values),
+        "FID": fid_value,
+        "FVD": fvd_value
     }
