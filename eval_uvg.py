@@ -69,6 +69,9 @@ def main():
     parser.add_argument("--gop", type=int, default=8)
     parser.add_argument("--intra_quality", type=int, default=4, choices=[1, 2, 4])
     parser.add_argument("--resolution", type=str, default="1080p", choices=["512p", "1080p"])
+    parser.add_argument("--grid", type=int, default=None,
+                    help="Optional grid size to append (e.g., 3 for grid_3). If not set, no grid folder is appended.")
+
 
     args = parser.parse_args()
 
@@ -80,14 +83,21 @@ def main():
         print(f"\nProcessing video: {video}")
 
         original_folder = os.path.join(args.original_root, video, f"{args.resolution}")
-        optical_flow_folder = os.path.join(args.original_root, video, f"{args.resolution}", f"optical_flow_gop_{args.gop}")
         previous_frame_folder = os.path.join(args.original_root, video, f"{args.resolution}", f"decoded_q{args.intra_quality}")
         pred_folder = os.path.join(args.pred_root, video, args.resolution)
 
-        image_paths = sorted(glob.glob(os.path.join(original_folder, "*.png")))
-        flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.png")))
-        previous_frames_paths = sorted(glob.glob(os.path.join(previous_frame_folder, "*.png")))[::args.gop // 4]
+        optical_flow_folder = os.path.join(args.original_root,
+            video,
+            f"{args.resolution}",
+            f"optical_flow_gop_{args.gop}"
+        )
 
+        if args.grid is not None:
+            optical_flow_folder = os.path.join(optical_flow_folder, f"grid_{args.grid}")
+
+        image_paths = sorted(glob.glob(os.path.join(original_folder, "*.png")))
+        flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.decoded.png")))
+        previous_frames_paths = sorted(glob.glob(os.path.join(previous_frame_folder, "*.png")))[::args.gop // 4]
         prompt = details["prompt"]
 
         os.makedirs(pred_folder, exist_ok=True)
@@ -103,47 +113,36 @@ def main():
             gop=args.gop
         )
 
-        plot_save_location = os.path.join(pred_folder, "original_vs_predicted.png")
-        if len(original_images) > 5 and len(predictions) > 5:
-            plot_images(
-                original_images=original_images,
-                predictions=predictions,
-                save_location=plot_save_location,
-                start_index=10,
-                end_index=18,
-                dpi=300
-            )
+        original_eval_images = []
+        pred_eval_images = []
+        for i in range(2, len(image_paths)):
+            # print(original_folder,)
+            original_path = os.path.join(original_folder, f"frame_{i-1:04d}.png")
+            pred_path = os.path.join(pred_folder, f"im{i:05d}_pred.png")
+            # print(original_folder,original_path, pred_path)
 
-    #     original_eval_images = []
-    #     pred_eval_images = []
-    #     for i in range(2, len(image_paths)):
-    #         # print(original_folder,)
-    #         original_path = os.path.join(original_folder, f"frame_{i-1:04d}.png")
-    #         pred_path = os.path.join(pred_folder, f"im{i:05d}_pred.png")
-    #         # print(original_folder,original_path, pred_path)
+            if os.path.exists(original_path) and os.path.exists(pred_path):
+                original_eval_images.append(Image.open(original_path).convert("RGB"))
+                pred_eval_images.append(Image.open(pred_path).convert("RGB"))
+            else:
+                print(f"Warning: Missing image for {video} frame {i}")
 
-    #         if os.path.exists(original_path) and os.path.exists(pred_path):
-    #             original_eval_images.append(Image.open(original_path).convert("RGB"))
-    #             pred_eval_images.append(Image.open(pred_path).convert("RGB"))
-    #         else:
-    #             print(f"Warning: Missing image for {video} frame {i}")
+        if original_eval_images and pred_eval_images:
+            metrics = calculate_metrics_batch(original_eval_images, pred_eval_images)
+            all_metrics[video] = metrics
+            print(f"Metrics for {video}:", metrics)
+        else:
+            print(f"No images found or incomplete data for video {video}. Skipping metrics.")
 
-    #     if original_eval_images and pred_eval_images:
-    #         metrics = calculate_metrics_batch(original_eval_images, pred_eval_images)
-    #         all_metrics[video] = metrics
-    #         print(f"Metrics for {video}:", metrics)
-    #     else:
-    #         print(f"No images found or incomplete data for video {video}. Skipping metrics.")
+    print("\nFinal Metrics Summary for All Videos:")
+    for video, metrics in all_metrics.items():
+        print(f"{video} Metrics: {metrics}")
 
-    # print("\nFinal Metrics Summary for All Videos:")
-    # for video, metrics in all_metrics.items():
-    #     print(f"{video} Metrics: {metrics}")
+    metrics_json_path = os.path.join(args.pred_root, f"all_videos_metrics_{args.resolution}_q{args.intra_quality}.json")
+    with open(metrics_json_path, "w") as f:
+        json.dump(all_metrics, f, indent=4)
 
-    # metrics_json_path = os.path.join(args.pred_root, f"all_videos_metrics_{args.resolution}_q{args.intra_quality}.json")
-    # with open(metrics_json_path, "w") as f:
-    #     json.dump(all_metrics, f, indent=4)
-
-    # print(f"\nAll metrics saved to {metrics_json_path}")
+    print(f"\nAll metrics saved to {metrics_json_path}")
 
 if __name__ == "__main__":
     main()
