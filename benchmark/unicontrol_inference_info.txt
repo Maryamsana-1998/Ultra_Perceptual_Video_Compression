@@ -1,0 +1,4 @@
+unicontrol predictions for gop4,8 and 16 are stored in unicontrol_codec. 
+inference settings used are:
+1080p resolution of input images which are compressed
+mbt2018-mean quality 4 model used for compression. 
