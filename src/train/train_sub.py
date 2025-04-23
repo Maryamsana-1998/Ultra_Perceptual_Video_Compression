@@ -50,14 +50,14 @@ def main():
     state_dict = torch.load(resume_path, map_location='cpu',
                             # weights_only=True
                              )
-    model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict['state_dict'])
     model.learning_rate = learning_rate
     model.sd_locked = sd_locked
 
     dataset = instantiate_from_config(config['data'])
 
     total_size = len(dataset)
-    train_size = int(0.1 * total_size)
+    train_size = int(0.4 * total_size)
     indices = list(range(total_size))
 
     # Split the dataset into a training subset
@@ -81,7 +81,6 @@ def main():
     )
         
     trainer = pl.Trainer(
-        max_steps=200000,
         gpus=gpus,
         callbacks=[checkpoint_callback], 
         default_root_dir=default_logdir,

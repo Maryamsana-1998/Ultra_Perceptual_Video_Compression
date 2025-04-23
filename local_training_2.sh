@@ -4,30 +4,26 @@
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem-per-gpu=29G
 #SBATCH -p batch_grad
-#SBATCH -w ariel-v10
-#SBATCH -o experiments/vimeo_temp/slurm.out
-#SBATCH -e experiments/vimeo_temp/slurm.err
+#SBATCH -w ariel-v13
+#SBATCH -o experiments/exp_video_bi/slurm.out
+#SBATCH -e experiments/exp_video_bi/slurm.err
 
 # echo "Running on $(hostname)"
 # nvidia-smi
-# echo "starting decompression"
-# tar --use-compress-program="pigz -p 16" -xvf /data/datasets/vimeo_datasets/vimeo_video_gop6.tar.gz -C /data2/local_datasets/vimeo_sequences/
-# echo "ENDED"
 
 # Set up directories
-EXPERIMENT_DIR="experiments/vimeo_temp"
+EXPERIMENT_DIR="experiments/exp_video_bi"
 LOCAL_CKPT_DIR="${EXPERIMENT_DIR}/local_ckpt"
 LOGS_DIR="${EXPERIMENT_DIR}/logs"
 PRED_DIR="${EXPERIMENT_DIR}/preds"
 
-
 mkdir -p ${EXPERIMENT_DIR} ${LOCAL_CKPT_DIR} ${LOGS_DIR}
 
 # Training parameters
-CONFIG_PATH="configs/local_v15_r1_op_r2_d.yaml"
-INIT_CKPT="experiments/vimeo_temp/local_ckpt/local-best-checkpoint-v1.ckpt"
+CONFIG_PATH="configs/local_v15_r1_op_r2.yaml"
+INIT_CKPT="ckpt/init_local_video_bi.ckpt"
 NUM_GPUS=4
-BATCH_SIZE=1
+BATCH_SIZE=2
 NUM_WORKERS=8
 MAX_EPOCHS=3
 
@@ -64,21 +60,3 @@ python src/train/train_sub.py \
     --checkpoint-dirpath ${LOCAL_CKPT_DIR} \
     ---max-epochs ${MAX_EPOCHS} \
     ---num-workers ${NUM_WORKERS}
-
-# # After training, prepare uni weights
-# LOCAL_BEST="${LOCAL_CKPT_DIR}/local-best-checkpoint.ckpt"
-# UNI_CKPT="${EXPERIMENT_DIR}/uni.ckpt"
-# UNI_CONFIG="configs/uni_v15.yaml"
-
-# python utils/prepare_weights.py integrate \
-#        ${LOCAL_BEST} ckpt/init_global_video.ckpt  \
-#        ${UNI_CONFIG} ${UNI_CKPT} 
-
-# echo "Unified weights prepared and stored at ${UNI_CKPT}."
-# echo "Experiment finished successfully."
-
-# python eval_uvg.py --original_root data/UVG_test_data \
-#                    --pred_root ${PRED_DIR}  \
-#                    --config ${UNI_CONFIG} \
-#                    --ckpt ${UNI_CKPT}
-

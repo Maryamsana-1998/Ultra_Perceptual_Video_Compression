@@ -179,3 +179,5 @@ benchmark/test_codec
 fvd_utils/models/fvd/*.pt
 benchmark/unicontrol*/
 experiments/*
+*.out
+*err

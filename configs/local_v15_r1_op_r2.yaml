@@ -1,5 +1,5 @@
 model:
-  target: models.uni_controlnet.UniControlNet
+  target: models.uni_controlnet_lpips.UniControlNet
   params:
     linear_start: 0.00085
     linear_end: 0.0120
@@ -15,15 +15,15 @@ model:
     monitor: val/loss_simple_ema
     scale_factor: 0.18215
     use_ema: False
-    mode: uni
-    # perceptual_weight: 0.075
+    mode: local
+    perceptual_weight: 0.075
 
     local_control_config:
       target: models.local_adapter.LocalAdapter
       params:
         in_channels: 4
         model_channels: 320
-        local_channels: 6
+        local_channels: 9
         inject_channels: [192, 256, 384, 512]
         inject_layers: [1, 4, 7, 10]
         num_res_blocks: 2
@@ -35,12 +35,6 @@ model:
         transformer_depth: 1
         context_dim: 768
         legacy: False
-    
-    global_control_config:
-      target: models.global_adapter.GlobalAdapter
-      params:
-        in_dim: 768
-        channel_mult: [2, 4]
 
     unet_config:
       target: models.local_adapter.LocalControlUNetModel
@@ -84,3 +78,16 @@ model:
 
     cond_stage_config:
       target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
+
+data:
+  target: src.train.video_dataset.UniDataset
+  params:
+    anno_path: data/captions.txt
+    root_dir: /data2/local_datasets/vimeo_sequences/
+    local_type_list: [r1,r2,flow]
+    global_type_list: []
+    resolution: 512
+    drop_txt_prob: 0.5
+    keep_all_cond_prob: 0.1
+    drop_all_cond_prob: 0.1
+    drop_each_cond_prob: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
