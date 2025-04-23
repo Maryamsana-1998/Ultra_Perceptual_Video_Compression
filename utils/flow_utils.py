@@ -52,39 +52,3 @@ def write_flo_file(flow, filename):
         f.write(struct.pack('i', flow.shape[1]))
         f.write(struct.pack('i', flow.shape[0]))
         flow.astype(np.float32).tofile(f)
-
-def process_file(args):
-    input_path, grid, method = args
-    output_dir = input_path.parent / f"grid_{grid}"
-    output_dir.mkdir(exist_ok=True)
-    output_path = output_dir / input_path.name
-    png_output = output_path.with_suffix(".png")
-
-    if png_output.exists():
-        print('skipping')
-        return  # Skip already processed
-
-    flow = load_flo_file(input_path)
-    processed_flow = reconstruct_flow(flow, grid_size=grid, method=method)
-    write_flo_file(processed_flow, output_path)
-    flo_img = fz.convert_from_file(str(output_path))
-    cv2.imwrite(str(png_output), flo_img[..., ::-1])
-    print(f"Saved: {output_path}")
-
-def process_all_flows(base_dir):
-    base_dir = Path(base_dir)
-    grid_sizes = [3, 9, 15]
-    tasks = []
-
-    for root, dirs, files in os.walk(base_dir):
-        for f in files:
-            if f.endswith('.flo'):
-                flow_path = Path(root) / f
-                for grid in grid_sizes:
-                    tasks.append((flow_path, grid, 'weighted'))
-
-    print(f"Processing {len(tasks)} tasks using {min(cpu_count(), 8)} workers...")
-    with Pool(processes=min(cpu_count(), 8)) as pool:
-        pool.map(process_file, tasks)
-
-process_all_flows("data/UVG")
