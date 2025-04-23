@@ -173,7 +173,8 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 ckpt/*.ckpt
-data/*
+data/*/
+captions.txt
 log_local/
 benchmark/test_codec
 fvd_utils/models/fvd/*.pt
@@ -181,3 +182,4 @@ benchmark/unicontrol*/
 experiments/*
 *.out
 *err
+data/*.txt
