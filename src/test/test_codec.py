@@ -207,7 +207,12 @@ def process_images(config_path, ckpt_path, image_paths, canny_paths, prompt, pre
                 print('already done')
                 continue
             else:
-                print('Inter Coded with :', canny_paths[inter_indices.index(i)] ,previous_frames_paths_gop[i] )
+                try: 
+                    print('Inter Coded with :', canny_paths[inter_indices.index(i)] ,previous_frames_paths_gop[i] )
+                except Exception as e:
+                    print('UNFINISHED', e,len(canny_paths), inter_indices.index(i) ,previous_frames_paths_gop[i], i )
+                    continue
+
                 canny_image = canny_images[inter_indices.index(i)]
                 frame_image = previous_frames[i]
         
