@@ -50,7 +50,11 @@ def main():
     state_dict = torch.load(resume_path, map_location='cpu',
                             # weights_only=True
                              )
-    model.load_state_dict(state_dict['state_dict'])
+    if 'state_dict' in state_dict:
+        model.load_state_dict(state_dict['state_dict'])
+    else:
+        model.load_state_dict(state_dict)
+        
     model.learning_rate = learning_rate
     model.sd_locked = sd_locked
 
