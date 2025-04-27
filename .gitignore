@@ -183,3 +183,4 @@ experiments/*
 *.out
 *err
 data/*.txt
+benchmark/uvg_q*
