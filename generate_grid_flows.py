@@ -25,7 +25,7 @@ from utils.flow_utils import (      #  your own helpers
 # Configuration
 # --------------------------------------------------------------------------- #
 BASE_DIR   = Path("data/UVG")
-GRID_SIZES = (3,9)       # tweak if you want fewer / more grids
+GRID_SIZES = (15,9)       # tweak if you want fewer / more grids
 MAX_WORKERS = 8               # cap workers so you don’t overload the node
 METHOD      = "weighted"      # reconstruct_flow argument
 # --------------------------------------------------------------------------- #

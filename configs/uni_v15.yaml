@@ -1,5 +1,5 @@
 model:
-  target: models.uni_controlnet.UniControlNet
+  target: models.uni_controlnet_lpips.UniControlNet
   params:
     linear_start: 0.00085
     linear_end: 0.0120
@@ -16,13 +16,14 @@ model:
     scale_factor: 0.18215
     use_ema: False
     mode: uni
+    perceptual_weight: 0.075
 
     local_control_config:
       target: models.local_adapter.LocalAdapter
       params:
         in_channels: 4
         model_channels: 320
-        local_channels: 21
+        local_channels: 12
         inject_channels: [192, 256, 384, 512]
         inject_layers: [1, 4, 7, 10]
         num_res_blocks: 2

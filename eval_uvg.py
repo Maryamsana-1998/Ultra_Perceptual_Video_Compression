@@ -67,7 +67,7 @@ def main():
     # parser.add_argument("--videos", nargs='+', default=["Beauty", "Jockey", "Bosphorus"],
     #                     help="Select one or more videos: Beauty, Jockey, Bosphorus")
     parser.add_argument("--gop", type=int, default=8)
-    parser.add_argument("--intra_quality", type=int, default=4, choices=[1, 2, 4])
+    parser.add_argument("--intra_quality", type=int, default=4, choices=[1, 4, 8])
     parser.add_argument("--resolution", type=str, default="1080p", choices=["512p", "1080p"])
     parser.add_argument("--grid", type=int, default=None,
                     help="Optional grid size to append (e.g., 3 for grid_3). If not set, no grid folder is appended.")
@@ -91,14 +91,18 @@ def main():
             f"{args.resolution}",
             f"optical_flow_gop_{args.gop}"
         )
+        # print(optical_flow_folder)
 
         if args.grid is not None:
             optical_flow_folder = os.path.join(optical_flow_folder, f"grid_{args.grid}")
+            flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.decoded.png")))
+        else:
+            flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.png")))
 
         image_paths = sorted(glob.glob(os.path.join(original_folder, "*.png")))
-        flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.decoded.png")))
         previous_frames_paths = sorted(glob.glob(os.path.join(previous_frame_folder, "*.png")))[::args.gop // 4]
         prompt = details["prompt"]
+        # print(flow_paths)
 
         os.makedirs(pred_folder, exist_ok=True)
 

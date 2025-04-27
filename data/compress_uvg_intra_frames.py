@@ -12,16 +12,16 @@ COMPRESSAI_PATH = Path("/data/maryam.sana/CompressAI/examples/codec.py")
 
 FRAMES = [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96]
 MODEL = "mbt2018-mean"
-QUALITY = 4
+QUALITY = 8
 GOP = 4  # Matches frame selection pattern
 CUDA_FLAG="--cuda"
 
 def process_video(video_name):
     input_dir = Path(f"UVG/{video_name}/1080p")
-    output_dir = Path(f"UVG/{video_name}/1080p/decoded_q4/")
+    output_dir = Path(f"UVG/{video_name}/1080p/decoded_q8/")
     output_dir.mkdir(exist_ok=True)
     
-    report_path = Path(f"UVG/{video_name}/1080p/decoded_q4/compression_report.txt")
+    report_path = Path(f"UVG/{video_name}/1080p/decoded_q8/compression_report.txt")
     with open(report_path, "a") as report:
         report.write(f"# Compression Report for model={MODEL}, quality={QUALITY}, GOP={GOP}\n")
         report.write(f"## Video: {video_name} | Resolution: 1080p\n\n")
