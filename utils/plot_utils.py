@@ -49,37 +49,33 @@ def average_per_gop_grid(df):
     return df.groupby(["grid_label", "gop"], as_index=False).mean(numeric_only=True)
 
 
-
 def plot_all_metrics_line(df_avg, metrics, output_path="benchmark/grid_comparison_plots/line_all_metrics.png"):
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     grid_labels = df_avg["grid_label"].unique()
-    gop_markers = {4: 'o', 8: 's', 16: 'D'}
     colors = {"grid_3": "red", "grid_9": "blue", "grid_15": "green", "no_grid": "black"}
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10), dpi=200)
     axes = axes.flatten()
 
     for i, metric in enumerate(metrics):
         ax = axes[i]
         for label in grid_labels:
             df_sub = df_avg[df_avg["grid_label"] == label]
-            for _, row in df_sub.iterrows():
-                gop = int(row["gop"])
-                ax.scatter(row["bpp"], row[metric], label=f"{label} - GOP{gop}",
-                           marker=gop_markers.get(gop, 'x'),
-                           color=colors.get(label, 'gray'))
 
-            # Optionally connect points per grid
-            ax.plot(df_sub["bpp"], df_sub[metric], color=colors.get(label, 'gray'), alpha=0.6)
+            # Scatter points (without labels)
+            ax.scatter(df_sub["bpp"], df_sub[metric], color=colors.get(label, 'gray'))
 
-        ax.set_title(f"{metric} vs BPP")
-        ax.set_xlabel("BPP")
-        ax.set_ylabel(metric)
-        ax.grid(True)
-        ax.legend(fontsize="small")
+            # Plot the connecting line (with one label only here)
+            ax.plot(df_sub["bpp"], df_sub[metric], label=label, color=colors.get(label, 'gray'), alpha=0.8)
 
-    # Remove empty subplot if metrics < 6
+        ax.set_title(f"{metric} vs BPP", fontsize=12)
+        ax.set_xlabel("BPP", fontsize=10)
+        ax.set_ylabel(metric, fontsize=10)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.legend(fontsize="small", loc="best", frameon=True)
+
+    # Remove extra empty subplot if needed
     if len(metrics) < 6:
         for j in range(len(metrics), 6):
             fig.delaxes(axes[j])
@@ -89,31 +85,57 @@ def plot_all_metrics_line(df_avg, metrics, output_path="benchmark/grid_compariso
     print(f"✅ Saved multi-metric plot: {output_path}")
     plt.close()
 
+
 def plot_gop8_bars(df_avg, metrics, output_path="benchmark/grid_comparison_plots/bar_gop8_comparison.png"):
     df_gop8 = df_avg[df_avg["gop"] == 8]
-    grid_labels = df_gop8["grid_label"]
-    x = range(len(grid_labels))
+    grid_labels = df_gop8["grid_label"].tolist()
+    x = np.arange(len(grid_labels))
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+    # Custom colors
+    custom_colors = {
+        "grid_3": "red",
+        "grid_9": "blue",
+        "grid_15": "green",
+        "no_grid": "gray"
+    }
+
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10), dpi=200)  # Higher DPI
     axes = axes.flatten()
 
     for i, metric in enumerate(metrics):
+        if i >= len(axes):
+            break
         ax = axes[i]
-        values = df_gop8[metric]
-        ax.bar(x, values, tick_label=grid_labels, color="skyblue")
-        ax.set_title(f"GOP 8 - {metric}")
-        ax.set_ylabel(metric)
-        ax.grid(axis='y')
 
-    # Remove empty subplot if metrics < 6
+        # Values for the metric
+        values = df_gop8[metric].tolist()
+        colors = [custom_colors.get(label, "black") for label in grid_labels]
+
+        bars = ax.bar(x, values, color=colors, width=0.5)  # Wider spacing (smaller width)
+
+        # Bar labels (legend entries)
+        for idx, bar in enumerate(bars):
+            bar.set_label(grid_labels[idx])
+
+        ax.set_title(f"GOP 8 - {metric}", fontsize=12)
+        ax.set_ylabel(metric, fontsize=10)
+        ax.set_xticks(x)
+        ax.set_xticklabels(grid_labels, fontsize=9)
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+        # Add legend once per subplot
+        ax.legend(fontsize=8, loc='best')
+
+    # Remove empty plots if fewer than 6 metrics
     if len(metrics) < 6:
         for j in range(len(metrics), 6):
             fig.delaxes(axes[j])
 
     fig.tight_layout()
     plt.savefig(output_path)
-    print(f"✅ Saved GOP 8 bar plot: {output_path}")
+    print(f"✅ Saved enhanced GOP 8 bar plot: {output_path}")
     plt.close()
+
 
 
 def plot_all_metrics_vs_bpp(h264_df, h265_df, unicontrol_df, metrics, save_path="benchmark/plots/all_metrics_vs_bpp.png"):
