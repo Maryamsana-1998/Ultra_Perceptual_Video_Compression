@@ -24,6 +24,7 @@ parser.add_argument('---logdir', type=str, default='./log_local/')
 parser.add_argument('---log-freq', type=int, default=500)
 parser.add_argument('---sd-locked', type=bool, default=True)
 parser.add_argument('---num-workers', type=int, default=4)
+parser.add_argument("---checkpoint-dirpath", type=str, default='checkpoints/vimeo_all/') 
 parser.add_argument('---gpus', type=int, default=-1)
 args = parser.parse_args()
 

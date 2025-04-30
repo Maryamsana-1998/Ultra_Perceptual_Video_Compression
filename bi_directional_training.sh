@@ -4,12 +4,13 @@
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem-per-gpu=29G
 #SBATCH -p batch_grad
-#SBATCH -w ariel-v10
-#SBATCH -o experiments/vimeo_temp/slurm.out
-#SBATCH -e experiments/vimeo_temp/slurm.err
+#SBATCH -w ariel-v13
+#SBATCH -o experiments/bi_directional/slurm.out
+#SBATCH -e experiments/bi_directional/slurm.err
+
 
 # Set up directories
-EXPERIMENT_DIR="experiments/vimeo_temp"
+EXPERIMENT_DIR="experiments/bi_directional"
 LOCAL_CKPT_DIR="${EXPERIMENT_DIR}/local_ckpt"
 LOGS_DIR="${EXPERIMENT_DIR}/logs"
 PRED_DIR="${EXPERIMENT_DIR}/preds"
@@ -17,8 +18,8 @@ PRED_DIR="${EXPERIMENT_DIR}/preds"
 mkdir -p ${EXPERIMENT_DIR} ${LOCAL_CKPT_DIR} ${LOGS_DIR}
 
 # Training parameters
-CONFIG_PATH="configs/local_v15_r1_op_r2_d.yaml"
-INIT_CKPT="experiments/vimeo_temp/local_ckpt/local-best-checkpoint.ckpt"
+CONFIG_PATH="configs/bi_directional/local_v15.yaml"
+INIT_CKPT="experiments/exp_video_bi/local_ckpt/local-best-checkpoint.ckpt"
 NUM_GPUS=8
 BATCH_SIZE=2
 NUM_WORKERS=16
@@ -54,17 +55,17 @@ python src/train/train.py \
     ---gpus ${NUM_GPUS} \
     ---batch-size ${BATCH_SIZE} \
     ---logdir ${LOGS_DIR} \
-    --checkpoint-dirpath ${LOCAL_CKPT_DIR} \
+    ---checkpoint-dirpath ${LOCAL_CKPT_DIR} \
     ---training-steps ${MAX_STEPS} \
     ---num-workers ${NUM_WORKERS}
 
 # After training, prepare uni weights
 LOCAL_BEST="${LOCAL_CKPT_DIR}/local-best-checkpoint.ckpt"
 UNI_CKPT="${EXPERIMENT_DIR}/uni.ckpt"
-UNI_CONFIG="configs/uni_v15.yaml"
+UNI_CONFIG="configs/bi_directional/uni_v15.yaml"
 
 python utils/prepare_weights.py integrate \
-       ${LOCAL_BEST} ckpt/init_global_temp.ckpt  \
+       ${LOCAL_BEST} ckpt/bi_directional/init_global.ckpt  \
        ${UNI_CONFIG} ${UNI_CKPT} 
 
 echo "Unified weights prepared and stored at ${UNI_CKPT}."

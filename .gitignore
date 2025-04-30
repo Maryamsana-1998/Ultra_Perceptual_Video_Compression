@@ -185,3 +185,4 @@ experiments/*
 data/*.txt
 benchmark/uvg_q*
 ckpt/*
+data/*.csv
