@@ -10,26 +10,28 @@
 
 # GPU 0
 CUDA_VISIBLE_DEVICES=0 python eval_uvg.py --original_root data/UVG/ \
-                   --pred_root benchmark/unicontrol_gop8_grid9 \
+                   --pred_root benchmark/uvg_q1 \
                    --config configs/uni_v15_perco.yaml \
                    --ckpt ckpt/uni.ckpt \
                    --gop 8 \
-                   --resolution 1080p --grid 9
+                   --intra_quality 1 \
+                   --resolution 1080p 
 
 # GPU 1
 CUDA_VISIBLE_DEVICES=1 python eval_uvg.py --original_root data/UVG/ \
-                   --pred_root benchmark/unicontrol_gop4_grid_9\
+                   --pred_root benchmark/uvg_q8 \
                    --config configs/uni_v15_perco.yaml \
                    --ckpt ckpt/uni.ckpt \
-                   --gop 4 \
-                   --resolution 1080p --grid 9
+                   --gop 8 \
+                   --intra_quality 8 \
+                   --resolution 1080p 
 
-# GPU 2
-CUDA_VISIBLE_DEVICES=2 python eval_uvg.py --original_root data/UVG/ \
-                   --pred_root benchmark/unicontrol_gop16_grid9 \
-                   --config configs/uni_v15_perco.yaml \
-                   --ckpt ckpt/uni.ckpt \
-                   --gop 16 \
-                   --resolution 1080p --grid 9
+# # GPU 2
+# CUDA_VISIBLE_DEVICES=2 python eval_uvg.py --original_root data/UVG/ \
+#                    --pred_root benchmark/unicontrol_gop16_grid15 \
+#                    --config configs/uni_v15_perco.yaml \
+#                    --ckpt ckpt/uni.ckpt \
+#                    --gop 16 \
+#                    --resolution 1080p --grid 15
 
 wait

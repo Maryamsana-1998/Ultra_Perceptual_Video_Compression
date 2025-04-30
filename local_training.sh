@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=6-0
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem-per-gpu=29G
 #SBATCH -p batch_grad
@@ -8,28 +8,21 @@
 #SBATCH -o experiments/vimeo_temp/slurm.out
 #SBATCH -e experiments/vimeo_temp/slurm.err
 
-# echo "Running on $(hostname)"
-# nvidia-smi
-# echo "starting decompression"
-# tar --use-compress-program="pigz -p 16" -xvf /data/datasets/vimeo_datasets/vimeo_video_gop6.tar.gz -C /data2/local_datasets/vimeo_sequences/
-# echo "ENDED"
-
 # Set up directories
 EXPERIMENT_DIR="experiments/vimeo_temp"
 LOCAL_CKPT_DIR="${EXPERIMENT_DIR}/local_ckpt"
 LOGS_DIR="${EXPERIMENT_DIR}/logs"
 PRED_DIR="${EXPERIMENT_DIR}/preds"
 
-
 mkdir -p ${EXPERIMENT_DIR} ${LOCAL_CKPT_DIR} ${LOGS_DIR}
 
 # Training parameters
 CONFIG_PATH="configs/local_v15_r1_op_r2_d.yaml"
-INIT_CKPT="experiments/vimeo_temp/local_ckpt/local-best-checkpoint-v1.ckpt"
-NUM_GPUS=4
-BATCH_SIZE=1
-NUM_WORKERS=8
-MAX_EPOCHS=3
+INIT_CKPT="experiments/vimeo_temp/local_ckpt/local-best-checkpoint.ckpt"
+NUM_GPUS=8
+BATCH_SIZE=2
+NUM_WORKERS=16
+MAX_STEPS=100000
 
 
 # Copy config file to experiment directory
@@ -44,41 +37,43 @@ cat <<EOF > ${HYPERPARAM_FILE}
     "num_gpus": ${NUM_GPUS},
     "batch_size": ${BATCH_SIZE},
     "num_workers": ${NUM_WORKERS},
-    "max_epochs": ${MAX_EPOCHS},
+    "max_steps": ${MAX_STEPS},
     "config": "${CONFIG_PATH}",
     "init_ckpt": "${INIT_CKPT}",
     "loss":"baseline+lpips normfix without logvar",
-    "data": "40"
+    "data": "100"
 }
 EOF
 
 echo "Hyperparameters JSON saved at ${HYPERPARAM_FILE}"
 
 # Run Training
-python src/train/train_sub.py \
+python src/train/train.py \
     --config-path ${CONFIG_PATH} \
     ---resume-path ${INIT_CKPT} \
     ---gpus ${NUM_GPUS} \
     ---batch-size ${BATCH_SIZE} \
     ---logdir ${LOGS_DIR} \
     --checkpoint-dirpath ${LOCAL_CKPT_DIR} \
-    ---max-epochs ${MAX_EPOCHS} \
+    ---training-steps ${MAX_STEPS} \
     ---num-workers ${NUM_WORKERS}
 
-# # After training, prepare uni weights
-# LOCAL_BEST="${LOCAL_CKPT_DIR}/local-best-checkpoint.ckpt"
-# UNI_CKPT="${EXPERIMENT_DIR}/uni.ckpt"
-# UNI_CONFIG="configs/uni_v15.yaml"
+# After training, prepare uni weights
+LOCAL_BEST="${LOCAL_CKPT_DIR}/local-best-checkpoint.ckpt"
+UNI_CKPT="${EXPERIMENT_DIR}/uni.ckpt"
+UNI_CONFIG="configs/uni_v15.yaml"
 
-# python utils/prepare_weights.py integrate \
-#        ${LOCAL_BEST} ckpt/init_global_video.ckpt  \
-#        ${UNI_CONFIG} ${UNI_CKPT} 
+python utils/prepare_weights.py integrate \
+       ${LOCAL_BEST} ckpt/init_global_temp.ckpt  \
+       ${UNI_CONFIG} ${UNI_CKPT} 
 
-# echo "Unified weights prepared and stored at ${UNI_CKPT}."
-# echo "Experiment finished successfully."
+echo "Unified weights prepared and stored at ${UNI_CKPT}."
+echo "Experiment finished successfully."
 
-# python eval_uvg.py --original_root data/UVG_test_data \
-#                    --pred_root ${PRED_DIR}  \
-#                    --config ${UNI_CONFIG} \
-#                    --ckpt ${UNI_CKPT}
+python eval_uvg.py --original_root data/UVG \
+                   --pred_root ${PRED_DIR}  \
+                   --config ${UNI_CONFIG} \
+                   --ckpt ${UNI_CKPT} \
+                   --gop 8 \
+                   --intra_quality 4 \
 

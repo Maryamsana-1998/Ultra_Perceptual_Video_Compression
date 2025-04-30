@@ -88,7 +88,7 @@ def main():
         gpus=gpus,
         callbacks=[checkpoint_callback], 
         default_root_dir=default_logdir,
-        max_epochs= args.max_epochs,
+        max_steps=training_steps,
         gradient_clip_val=1.0,
         detect_anomaly=True,
     )

@@ -4,7 +4,7 @@ if './' not in sys.path:
 	
 from omegaconf import OmegaConf
 import argparse
-
+import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -44,23 +44,40 @@ def main():
     config = OmegaConf.load(config_path)
     model = instantiate_from_config(config['model'])
 
-    model.load_state_dict(load_state_dict(resume_path, location='cpu'))
+    state_dict = torch.load(resume_path, map_location='cpu',
+                            # weights_only=True
+                             )
+    if 'state_dict' in state_dict:
+        model.load_state_dict(state_dict['state_dict'])
+    else:
+        model.load_state_dict(state_dict)
+        
     model.learning_rate = learning_rate
     model.sd_locked = sd_locked
 
     dataset = instantiate_from_config(config['data'])
-    dataloader = DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, pin_memory=True, shuffle=True)
 
-    logger = ImageLogger(batch_frequency=logger_freq)
+    dataloader = DataLoader(dataset, 
+                            num_workers=num_workers, 
+                            batch_size=batch_size,
+                            pin_memory=True, 
+                            shuffle=True, 
+                            persistent_workers=True)
+
+    #logger = ImageLogger(batch_frequency=logger_freq,num_local_conditions=2)
     checkpoint_callback = ModelCheckpoint(
         every_n_train_steps=logger_freq,
+        dirpath= args.checkpoint_dirpath,
+        filename='local-best-checkpoint'
     )
         
     trainer = pl.Trainer(
         gpus=gpus,
-        callbacks=[logger, checkpoint_callback], 
+        callbacks=[checkpoint_callback], 
         default_root_dir=default_logdir,
         max_steps=training_steps,
+        gradient_clip_val=1.0,
+        detect_anomaly=True,
     )
     trainer.fit(model,
         dataloader, 

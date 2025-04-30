@@ -82,13 +82,13 @@ def main():
         details = video_details[video]
         print(f"\nProcessing video: {video}")
 
-        original_folder = os.path.join(args.original_root, video, f"{args.resolution}")
-        previous_frame_folder = os.path.join(args.original_root, video, f"{args.resolution}", f"decoded_q{args.intra_quality}")
-        pred_folder = os.path.join(args.pred_root, video, args.resolution)
+        original_folder = os.path.join(args.original_root, video, "images")
+        previous_frame_folder = os.path.join(args.original_root, video, "intra_frames", f"decoded_q{args.intra_quality}")
+        pred_folder = os.path.join(args.pred_root, video)
 
         optical_flow_folder = os.path.join(args.original_root,
             video,
-            f"{args.resolution}",
+            "optical_flow",
             f"optical_flow_gop_{args.gop}"
         )
         # print(optical_flow_folder)
