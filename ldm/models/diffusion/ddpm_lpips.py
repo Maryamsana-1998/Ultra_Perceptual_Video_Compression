@@ -607,7 +607,6 @@ class LatentDiffusion(DDPM):
         self.lpips_model = None
         self.lpips_model = NormFixLPIPS(net='alex',lpips=True).eval()
         self.lpips_model.to(self.device)
-
         
         self.restarted_from_ckpt = False
         if ckpt_path is not None:
