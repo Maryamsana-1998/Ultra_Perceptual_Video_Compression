@@ -57,7 +57,7 @@ def main():
     model.sd_locked = sd_locked
 
     dataset = instantiate_from_config(config['data'])
-
+    print('DATA SET LENGTH ', len(dataset))
     dataloader = DataLoader(dataset, 
                             num_workers=num_workers, 
                             batch_size=batch_size,
@@ -73,6 +73,8 @@ def main():
     )
         
     trainer = pl.Trainer(
+        accumulate_grad_batches=4,
+        logger=True,   
         gpus=gpus,
         callbacks=[checkpoint_callback], 
         default_root_dir=default_logdir,
