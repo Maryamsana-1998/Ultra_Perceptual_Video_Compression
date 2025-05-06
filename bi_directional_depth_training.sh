@@ -4,9 +4,13 @@
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem-per-gpu=29G
 #SBATCH -p batch_grad
-#SBATCH -w ariel-v10
+#SBATCH -w ariel-v8
 #SBATCH -o experiments/bi_directional_depth/slurm.out
 #SBATCH -e experiments/bi_directional_depth/slurm.err
+
+# echo "starting decompression"
+# tar --use-compress-program="pigz -p 16" -xvf /data/datasets/vimeo_datasets/vimeo_video_gop6.tar.gz -C /data2/local_datasets/vimeo_sequences/
+# echo "ENDED"
 
 # Set up directories
 EXPERIMENT_DIR="experiments/bi_directional_depth"
@@ -18,9 +22,9 @@ mkdir -p ${EXPERIMENT_DIR} ${LOCAL_CKPT_DIR} ${LOGS_DIR}
 
 # Training parameters
 CONFIG_PATH="configs/bi_directional_depth/local_v15.yaml"
-INIT_CKPT="experiments/vimeo_temp/local_ckpt/local-best-checkpoint.ckpt"
+INIT_CKPT="experiments/bi_directional_depth/local_ckpt/local-best-checkpoint-v1.ckpt"
 NUM_GPUS=8
-BATCH_SIZE=2
+BATCH_SIZE=1
 NUM_WORKERS=16
 MAX_STEPS=100000
 
