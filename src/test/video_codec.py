@@ -1,99 +1,64 @@
-import os
-import glob
- # Assuming this provides 'process' and 'video_details'
+import sys
 
-# === Global Prompt Settings ===
-a_prompt = "best quality, extremely detailed"
-n_prompt = "longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality"
+if "./" not in sys.path:
+    sys.path.append("./")
+from utils.share import *
+import utils.config as config
 
-num_samples = 1
-image_resolution = 512
-ddim_steps = 60
-strength = 1
-scale = 7.5
-seed = 42
-eta = 0.0
-global_strength = 1
-
-# === Reconstruction Function ===
-def get_reconstructed_image(model, prompt, r1_image, r2_image, depth_image, flow_image):
-    pred = process(
-        model,
-        r1_image,
-        r2_image,
-        depth_image,
-        flow_image,
-        prompt,
-        a_prompt,
-        n_prompt,
-        num_samples,
-        image_resolution,
-        ddim_steps,
-        strength,
-        scale,
-        seed,
-        eta,
-        global_strength
-    )
-    pred_img = pred[0][0]
-    return pred_img
-
-video_details = {
-    "Beauty": {
-        "prompt": "A beautiful blonde girl smiling with pink lipstick with black background",
-        "path": "Beauty"
-    }}
-# === Data Paths Setup ===
-video = 'Beauty'
-details = video_details[video]
-
-original_folder = os.path.join('data/UVG', video, "1080p")
-decoded_folder = os.path.join('data/UVG', video, "1080p", "decoded_q4")
-prediction_folder = os.path.join('experiments/preds', video, "1080p")
-optical_flow_folder = os.path.join('data/UVG', video, "1080p", "optical_flow_gop_8")
-
-# === Load File Lists ===
-image_paths = sorted(glob.glob(os.path.join(original_folder, "*.png")))[:8]
-flow_paths = sorted(glob.glob(os.path.join(optical_flow_folder, "*.png")))[0:7]
-depth_frames_paths = sorted(glob.glob(os.path.join('data/depth_outputs', "*.png")))
-# === Prompt for this video ===
-prompt = details["prompt"]
-
-# === Debug (Optional) ===
-# print(f"Loaded {len(image_paths)} images")
-# print(f"Loaded {len(previous_frames_paths)} previous frames")
-# print(f"Loaded {len(flow_paths)} optical flows")
+import einops
+import numpy as np
 import cv2
+import torch
+from pytorch_lightning import seed_everything
+from annotator.util import HWC3
 from models.util import create_model, load_state_dict
+from models.ddim_hacked import DDIMSampler
+import numpy as np
+import os
 
-model = create_model('configs/uni_v15.yaml').cpu()
-ckpt = load_state_dict('experiments/vimeo_temp/uni.ckpt', location="cuda")
-# Filter out extra keys
-model_keys = set(model.state_dict().keys())
-filtered_ckpt = {k: v for k, v in ckpt.items() if k in model_keys}
 
-# Load the filtered state dict
-model.load_state_dict(filtered_ckpt)
-model = model.cuda()
+# ====== UTILITIES ======
+def get_png_paths(directory):
+    """Return a sorted list of all .png file paths in a directory."""
+    if not directory or not os.path.isdir(directory):
+        return []
+    return sorted(
+        os.path.join(directory, f)
+        for f in os.listdir(directory)
+        if f.lower().endswith('.png')
+    )
+
+
+def select_intra_frames_by_gop(paths, gop_size):
+    """Select only those intra-frame paths whose frame number % gop_size == 0."""
+    def frame_number(path):
+        name = os.path.basename(path)
+        return int(name.replace('decoded_frame_', '').replace('.png', ''))
+
+    sorted_paths = sorted(paths, key=frame_number)
+    return [
+        p for p in sorted_paths
+        if frame_number(p) % gop_size == 0
+    ]
+
+
 
 def process(
     model,
-    r1_image,
-    r2_image,
-    depth_image,
-    flow_image,
+    local_images,
     prompt,
-    a_prompt,
-    n_prompt,
-    num_samples,
-    image_resolution,
-    ddim_steps,
-    strength,
-    scale,
-    seed,
-    eta,
-    global_strength
+    a_prompt="best quality, extremely detailed",
+    n_prompt="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
+    num_samples=1,
+    image_resolution=512,
+    ddim_steps=50,
+    strength=1,
+    scale=7.5,
+    seed=42,
+    eta=0.0,
+    global_strength=1
 ):
+
 
     seed_everything(seed)
     ddim_sampler = DDIMSampler(model)
@@ -102,7 +67,6 @@ def process(
         W, H = image_resolution, image_resolution
 
         local_conditions=[]
-        local_images = [r1_image,r2_image,depth_image, flow_image]
 
         for image in local_images:
             image = cv2.resize(image, (W, H))
@@ -168,30 +132,3 @@ def process(
         results = [x_samples[i] for i in range(num_samples)]
 
     return (results, detected_maps)
-
-
-r1_frame_path = 'data/UVG/Beauty/1080p/decoded_q4/decoded_frame_0000.png'
-r2_frame_path = 'data/UVG/Beauty/1080p/decoded_q4/decoded_frame_0008.png'
-
-# === Load r1 and r2 frames ===
-r1_image = cv2.imread(r1_frame_path)
-r2_image = cv2.imread(r2_frame_path)
-
-r1_image = cv2.cvtColor(r1_image, cv2.COLOR_BGR2RGB)
-r2_image = cv2.cvtColor(r2_image, cv2.COLOR_BGR2RGB)
-
-print("✅ Loaded r1 and r2 frames.")
-
-pred_images = []
-for depth_path, flow_path in zip(depth_frames_paths, flow_paths):
-    # Load depth image
-    depth_img = cv2.imread(depth_path)
-    depth_img = cv2.cvtColor(depth_img, cv2.COLOR_BGR2RGB)
-
-    # Load flow image
-    flow_img = cv2.imread(flow_path)
-    flow_img = cv2.cvtColor(flow_img, cv2.COLOR_BGR2RGB)
-
-    pred = get_reconstructed_image(model, prompt, r1_image, r2_image, depth_img, flow_img)
-    pred_images.append(pred)
-

@@ -12,6 +12,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from ldm.util import instantiate_from_config
 from models.util import load_state_dict
 from models.logger import ImageLogger
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 parser = argparse.ArgumentParser(description='Uni-ControlNet Training')
@@ -79,7 +82,6 @@ def main():
         callbacks=[checkpoint_callback], 
         default_root_dir=default_logdir,
         max_steps=training_steps,
-        gradient_clip_val=1.0,
         detect_anomaly=True,
     )
     trainer.fit(model,
