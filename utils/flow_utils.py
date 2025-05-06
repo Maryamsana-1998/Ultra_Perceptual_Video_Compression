@@ -52,3 +52,30 @@ def write_flo_file(flow, filename):
         f.write(struct.pack('i', flow.shape[1]))
         f.write(struct.pack('i', flow.shape[0]))
         flow.astype(np.float32).tofile(f)
+
+def flow_to_color(flow):
+    h, w = flow.shape[:2]
+    fx, fy = flow[..., 0], flow[..., 1]
+    mag, ang = cv2.cartToPolar(fx, fy)
+    hsv = np.zeros((h, w, 3), dtype=np.uint8)
+    hsv[..., 0] = ang * 180 / np.pi / 2  # Hue = direction
+    hsv[..., 1] = 255                    # Saturation = fixed
+    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)  # Value = magnitude
+    return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+def color_to_flow(rgb_img):
+    hsv = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2HSV)
+    h = hsv[..., 0].astype(np.float32)
+    s = hsv[..., 1].astype(np.float32)
+    v = hsv[..., 2].astype(np.float32)
+
+    # Convert back to angle and magnitude
+    ang = h * 2 * np.pi / 180.0  # angle in radians
+    mag = v / 255.0              # relative magnitude (will lose scale!)
+
+    # Convert polar to cartesian
+    fx = mag * np.cos(ang)
+    fy = mag * np.sin(ang)
+
+    return np.stack([fx, fy], axis=-1).astype(np.float32)
+
