@@ -97,13 +97,17 @@ def process_video(video,model,args):
             )
         else:
             # build list of local image paths: prev intra, next intra, flow (and depth)
-            local_paths = [
-                intra_for_frame[i],
-                intra_for_frame[i + args.gop],
-                flow_paths[inter_indices.index(i)]
-            ]
-            if args.with_depth:
-                local_paths.append(depth_paths[i])
+            try:
+                local_paths = [
+                    intra_for_frame[i],
+                    intra_for_frame[i + args.gop],
+                    flow_paths[inter_indices.index(i)]
+                ]
+                if args.with_depth:
+                    local_paths.append(depth_paths[i])
+            except Exception as e:
+                print('error and skipping', e)
+                continue
 
             print('Inter Coded with:', local_paths, '\n')
 
@@ -123,11 +127,11 @@ def process_video(video,model,args):
                 cv2.cvtColor(pred[0][0], cv2.COLOR_RGB2BGR)
             )
         
-    metrics = eval_video(original_dir, pred_dir)
+    metrics = eval_video(original_dir, pred_dir,video)
     return metrics
 
 
-def eval_video(original_folder, pred_folder):
+def eval_video(original_folder, pred_folder,video):
 
     original_paths = get_png_paths(original_folder)
     original_eval_images = []
