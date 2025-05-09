@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=6-0
-#SBATCH --gres=gpu:6
+#SBATCH --gres=gpu:8
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem-per-gpu=29G
 #SBATCH -p batch_grad
@@ -19,8 +19,8 @@ mkdir -p ${EXPERIMENT_DIR} ${LOCAL_CKPT_DIR} ${LOGS_DIR}
 
 # Training parameters
 CONFIG_PATH="configs/bi_directional/local_v15.yaml"
-INIT_CKPT="experiments/exp_video_bi/local_ckpt/local-best-checkpoint-v4.ckpt"
-NUM_GPUS=6
+INIT_CKPT="experiments/bi_directional/local_ckpt/local-best-checkpoint.ckpt"
+NUM_GPUS=8
 BATCH_SIZE=1
 NUM_WORKERS=16
 MAX_STEPS=100000
