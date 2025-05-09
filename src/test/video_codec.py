@@ -15,7 +15,7 @@ from models.util import create_model, load_state_dict
 from models.ddim_hacked import DDIMSampler
 import numpy as np
 import os
-
+import re
 
 # ====== UTILITIES ======
 def get_png_paths(directory):
@@ -28,20 +28,22 @@ def get_png_paths(directory):
         if f.lower().endswith('.png')
     )
 
+def frame_number(path):
+    name = os.path.basename(path)
+    match = re.search(r'\d{4}', name)
+    if match:
+        return int(match.group())
+    else:
+        raise ValueError(f"No 4-digit frame number found in filename: {name}")
 
 def select_intra_frames_by_gop(paths, gop_size):
     """Select only those intra-frame paths whose frame number % gop_size == 0."""
-    def frame_number(path):
-        name = os.path.basename(path)
-        return int(name.replace('decoded_frame_', '').replace('.png', ''))
 
     sorted_paths = sorted(paths, key=frame_number)
     return [
         p for p in sorted_paths
         if frame_number(p) % gop_size == 0
     ]
-
-
 
 def process(
     model,
