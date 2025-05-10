@@ -1,7 +1,7 @@
 import torch
 import torch as th
 import torch.nn as nn
-# from models.softsplat import softsplat
+from models.softsplat import softsplat
 from ldm.modules.diffusionmodules.util import (
     checkpoint,
     conv_nd,
@@ -110,107 +110,109 @@ class LocalResBlock(nn.Module):
         
         return self.skip_connection(x) + h
 
-# class FeatureWarperSoftsplat(nn.Module):
-#     def __init__(self, with_learnable_metric=False, in_channels=128):
-#         super().__init__()
-#         self.with_learnable_metric = with_learnable_metric
+class FeatureWarperSoftsplat(nn.Module):
+    def __init__(self, with_learnable_metric=False, in_channels=128):
+        super().__init__()
+        self.with_learnable_metric = with_learnable_metric
 
-#         if with_learnable_metric:
-#             # Learn confidence (metric) from input features
-#             self.metric_net = nn.Sequential(
-#                 nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
-#                 nn.ReLU(inplace=True),
-#                 nn.Conv2d(64, 1, kernel_size=3, padding=1)  # Output: [B, 1, H, W]
-#             )
+        if with_learnable_metric:
+            # Learn confidence (metric) from input features
+            self.metric_net = nn.Sequential(
+                nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(64, 1, kernel_size=3, padding=1)  # Output: [B, 1, H, W]
+            )
 
-#     def forward(self, feat_ref, flow):
-#         """
-#         feat_ref: tensor of shape [B, C=128, H=128, W=128]
-#         flow:     tensor of shape [B, 2, H, W] (optical flow in pixel units)
-#         """
-#         if self.with_learnable_metric:
-#             metric = self.metric_net(feat_ref)  # [B, 1, H, W]
-#         else:
-#             # Default: uniform confidence
-#             metric = torch.ones_like(flow[:, :1])  # shape: [B, 1, H, W]
+    def forward(self, feat_ref, flow):
+        """
+        feat_ref: tensor of shape [B, C=128, H=128, W=128]
+        flow:     tensor of shape [B, 2, H, W] (optical flow in pixel units)
+        """
+        if self.with_learnable_metric:
+            metric = self.metric_net(feat_ref)  # [B, 1, H, W]
+        else:
+            # Default: uniform confidence
+            metric = torch.ones_like(flow[:, :1])  # shape: [B, 1, H, W]
 
-#         warped = softsplat(
-#             tenIn=feat_ref,
-#             tenFlow=flow,
-#             tenMetric=metric,
-#             strMode="soft"
-#         )
-#         return warped
+        warped = softsplat(
+            tenIn=feat_ref,
+            tenFlow=flow,
+            tenMetric=metric,
+            strMode="soft"
+        )
+        return warped
 
-# class FeatureExtractorWarped(nn.Module):
-#     def __init__(self, local_channels, inject_channels, dims=2):
-#         super().__init__()
-#         self.pre_extractor = LocalTimestepEmbedSequential(
-#             conv_nd(dims, 3, 32, 3, padding=1),
-#             nn.SiLU(),
-#             conv_nd(dims, 32, 64, 3, padding=1, stride=2),
-#             nn.SiLU(),
-#             conv_nd(dims, 64, 64, 3, padding=1),
-#             nn.SiLU(),
-#             conv_nd(dims, 64, 128, 3, padding=1, stride=2),
-#             nn.SiLU(),
-#             conv_nd(dims, 128, 128, 3, padding=1),
-#             nn.SiLU(),
-        # )
-        # self.wrapper = FeatureWarperSoftsplat()
-        # self.extractors = nn.ModuleList([
-        #     LocalTimestepEmbedSequential(
-        #         conv_nd(dims, 128, inject_channels[0], 3, padding=1, stride=2),
-        #         nn.SiLU()
-        #     ),
-        #     LocalTimestepEmbedSequential(
-        #         conv_nd(dims, inject_channels[0], inject_channels[1], 3, padding=1, stride=2),
-        #         nn.SiLU()
-        #     ),
-        #     LocalTimestepEmbedSequential(
-        #         conv_nd(dims, inject_channels[1], inject_channels[2], 3, padding=1, stride=2),
-        #         nn.SiLU()
-        #     ),
-        #     LocalTimestepEmbedSequential(
-        #         conv_nd(dims, inject_channels[2], inject_channels[3], 3, padding=1, stride=2),
-        #         nn.SiLU()
-        #     )
-        # ])
-        # self.zero_convs = nn.ModuleList([
-        #     zero_module(conv_nd(dims, inject_channels[0], inject_channels[0], 3, padding=1)),
-        #     zero_module(conv_nd(dims, inject_channels[1], inject_channels[1], 3, padding=1)),
-        #     zero_module(conv_nd(dims, inject_channels[2], inject_channels[2], 3, padding=1)),
-        #     zero_module(conv_nd(dims, inject_channels[3], inject_channels[3], 3, padding=1))
-        # ])
-    #     self.depth_extractor = LocalTimestepEmbedSequential(
-    #         conv_nd(dims, 1, 12, 3, padding=1),
-    #         nn.SiLU(),
-    #         conv_nd(dims, 12, 32, 3, padding=1, stride=2),
-    #         nn.SiLU(),
-    #         conv_nd(dims, 32, 64, 3, padding=1),
-    #         nn.SiLU(),
-    #         conv_nd(dims, 64, 32, 3, padding=1, stride=2),
-    #         nn.SiLU(),
-    #         conv_nd(dims, 32, 12, 3, padding=1),
-    #         nn.SiLU(),
-    #     )
-    #     self.fusion = nn.Conv2d(in_channels=140, out_channels=128, kernel_size=1) 
+class FeatureExtractorWarped(nn.Module):
+    def __init__(self, inject_channels, dims=2):
+        super().__init__()
+        self.pre_extractor = LocalTimestepEmbedSequential(
+            conv_nd(dims, 3, 32, 3, padding=1),
+            nn.SiLU(),
+            conv_nd(dims, 32, 64, 3, padding=1, stride=2),
+            nn.SiLU(),
+            conv_nd(dims, 64, 64, 3, padding=1),
+            nn.SiLU(),
+            conv_nd(dims, 64, 128, 3, padding=1, stride=2),
+            nn.SiLU(),
+            conv_nd(dims, 128, 128, 3, padding=1),
+            nn.SiLU(),
+        )
+        self.wrapper = FeatureWarperSoftsplat()
+        self.extractors = nn.ModuleList([
+            LocalTimestepEmbedSequential(
+                conv_nd(dims, 128, inject_channels[0], 3, padding=1, stride=2),
+                nn.SiLU()
+            ),
+            LocalTimestepEmbedSequential(
+                conv_nd(dims, inject_channels[0], inject_channels[1], 3, padding=1, stride=2),
+                nn.SiLU()
+            ),
+            LocalTimestepEmbedSequential(
+                conv_nd(dims, inject_channels[1], inject_channels[2], 3, padding=1, stride=2),
+                nn.SiLU()
+            ),
+            LocalTimestepEmbedSequential(
+                conv_nd(dims, inject_channels[2], inject_channels[3], 3, padding=1, stride=2),
+                nn.SiLU()
+            )
+        ])
+        self.zero_convs = nn.ModuleList([
+            zero_module(conv_nd(dims, inject_channels[0], inject_channels[0], 3, padding=1)),
+            zero_module(conv_nd(dims, inject_channels[1], inject_channels[1], 3, padding=1)),
+            zero_module(conv_nd(dims, inject_channels[2], inject_channels[2], 3, padding=1)),
+            zero_module(conv_nd(dims, inject_channels[3], inject_channels[3], 3, padding=1))
+        ])
+        self.depth_extractor = LocalTimestepEmbedSequential(
+            conv_nd(dims, 3, 12, 3, padding=1),
+            nn.SiLU(),
+            conv_nd(dims, 12, 32, 3, padding=1, stride=2),
+            nn.SiLU(),
+            conv_nd(dims, 32, 64, 3, padding=1),
+            nn.SiLU(),
+            conv_nd(dims, 64, 32, 3, padding=1, stride=2),
+            nn.SiLU(),
+            conv_nd(dims, 32, 12, 3, padding=1),
+            nn.SiLU(),
+        )
+        self.fusion = nn.Conv2d(in_channels=140, out_channels=128, kernel_size=1) 
 
-    # def forward(self, local_conditions):
-    #     depth, flow, frame =local_conditions
-    #     frame_features = self.pre_extractor(frame)
-    #     depth_features = self.depth_extractor(depth)
-    #     warped_features = self.wrapper(frame_features, flow)
-    #     fused_features = torch.cat([warped_features,depth_features],dim=1)
-    #     local_features = self.fusion(fused_features)
+    def forward(self, local_conditions,flow):
+        frame =local_conditions[:, :3, :, :]
+        depth = local_conditions[:, 3:, :, :]
+        frame_features = self.pre_extractor(frame,None)  # [B,C,W,H]
+        depth_features = self.depth_extractor(depth,None)
+        warped_features = self.wrapper(frame_features, flow)
+           
+        fused_features = torch.cat([warped_features,depth_features],dim=1)
+        local_features = self.fusion(fused_features)
 
-    #     assert len(self.extractors) == len(self.zero_convs)
+        assert len(self.extractors) == len(self.zero_convs)
         
-    #     output_features = []
-    #     for idx in range(len(self.extractors)):
-    #         local_features = self.extractors[idx](local_features, None)
-    #         output_features.append(self.zero_convs[idx](local_features))
-    #     return output_features
+        output_features = []
+        for idx in range(len(self.extractors)):
+            local_features = self.extractors[idx](local_features, None)
+            output_features.append(self.zero_convs[idx](local_features))
+        return output_features
 
 class FeatureExtractor(nn.Module):
 
