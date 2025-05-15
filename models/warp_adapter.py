@@ -262,25 +262,3 @@ class LocalAdapter(nn.Module):
         outs.append(self.middle_block_out(h, emb, context))
 
         return outs
-
-
-class LocalControlUNetModel(UNetModel):
-    def forward(self, x, timesteps=None, context=None, local_control=None, **kwargs):
-        hs = []
-        with torch.no_grad():
-            t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
-            emb = self.time_embed(t_emb)
-            h = x.type(self.dtype)
-            for module in self.input_blocks:
-                h = module(h, emb, context)
-                hs.append(h)
-            h = self.middle_block(h, emb, context)
-
-        h += local_control.pop()
-
-        for module in self.output_blocks:
-            h = torch.cat([h, hs.pop() + local_control.pop()], dim=1)
-            h = module(h, emb, context)
-
-        h = h.type(x.dtype)
-        return self.out(h)

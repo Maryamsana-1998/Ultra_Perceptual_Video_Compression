@@ -194,7 +194,7 @@ class FeatureExtractorWarped(nn.Module):
             conv_nd(dims, 32, 12, 3, padding=1),
             nn.SiLU(),
         )
-        self.fusion = nn.Conv2d(in_channels=140, out_channels=128, kernel_size=1) 
+        self.fusion =  nn.Conv2d(in_channels=140, out_channels=128, kernel_size=1)
 
     def forward(self, local_conditions,flow):
         frame =local_conditions[:, :3, :, :]
@@ -210,7 +210,7 @@ class FeatureExtractorWarped(nn.Module):
         
         output_features = []
         for idx in range(len(self.extractors)):
-            local_features = self.extractors[idx](local_features, None)
+            local_features = self.extractors[idx](nn.functional.silu(local_features), None)
             output_features.append(self.zero_convs[idx](local_features))
         return output_features
 

@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --time=6-0
-#SBATCH --gres=gpu:4
+#SBATCH --time=2-0
+#SBATCH --gres=gpu:3
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem-per-gpu=29G
 #SBATCH -p batch_grad
-#SBATCH -w ariel-v10
+#SBATCH -w ariel-v13
 #SBATCH -o experiments/bi_directional_warp/slurm.out
 #SBATCH -e experiments/bi_directional_warp/slurm.err
 
@@ -19,8 +19,8 @@ mkdir -p ${EXPERIMENT_DIR} ${LOCAL_CKPT_DIR} ${LOGS_DIR}
 
 # Training parameters
 CONFIG_PATH="configs/bi_directional_warp/local_v15.yaml"
-INIT_CKPT="ckpt/bi_directional_warp/init_local.ckpt"
-NUM_GPUS=4
+INIT_CKPT="experiments/bi_directional_warp/local_ckpt/local-best-checkpoint-v1.ckpt"
+NUM_GPUS=3
 BATCH_SIZE=1
 NUM_WORKERS=8
 MAX_STEPS=100000
