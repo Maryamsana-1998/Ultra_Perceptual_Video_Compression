@@ -5,6 +5,7 @@ import numpy as np
 import glob
 from torch.utils.data import Dataset
 from pathlib import Path
+from annotator.content import ContentDetector
 
 from .util import *
 from utils.flow_utils import load_flo_file  
@@ -64,6 +65,7 @@ class UniDataset(Dataset):
 
      self.sequences = glob.glob(root_dir+'/*/*')
      self.file_ids, self.annos = read_anno(anno_path)
+     self.global_processor = ContentDetector()
 
      self.video_frames = []
      for video_dir in self.sequences:
@@ -94,9 +96,11 @@ class UniDataset(Dataset):
             print('error: ',e,img_path)
             raise e  
 
+        # needs to expanded
         global_files = []
         for global_type in self.global_type_list:
-            global_files.append(self.global_paths[global_type][index])
+            if global_type == 'r2':
+                global_files.append(img_path.with_name('r2.png'))
 
         local_files = []
         flow_path = None
@@ -124,7 +128,9 @@ class UniDataset(Dataset):
             
         global_conditions = []
         for global_file in global_files:
-            condition = np.load(global_file)
+            global_img = cv2.imread(global_file)
+            global_img = cv2.cvtColor(global_img, cv2.COLOR_BGR2RGB)
+            condition = self.global_processor(global_img)
             global_conditions.append(condition)
 
         if random.random() < self.drop_txt_prob:
