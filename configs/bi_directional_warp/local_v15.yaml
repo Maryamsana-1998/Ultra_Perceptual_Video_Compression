@@ -83,7 +83,7 @@ data:
   params:
     anno_path: data/captions.txt
     root_dir: /data2/local_datasets/vimeo_sequences
-    local_type_list: [r1,flow,depth]
+    local_type_list: [r1,flow]
     global_type_list: []
     resolution: 512
     drop_txt_prob: 0.5
