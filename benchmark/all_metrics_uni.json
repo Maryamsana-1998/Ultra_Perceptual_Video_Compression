@@ -1,0 +1,87 @@
+{
+    "Beauty": {
+      "CRF": "q4",
+      "PSNR": 25.068859,
+      "MS-SSIM": 0.877861,
+      "LPIPS": 0.100739,
+      "FID": 0.344285,
+      "FVD": 4805478.0,
+      "intra_storage": 280197.12,
+      "flow_storage": 1654716.0,
+      "total_storage": 1934913.12,
+      "BPP": 0.076958
+    },
+    "Bosphorus": {
+      "CRF": "q4",
+      "PSNR": 24.345901,
+      "MS-SSIM": 0.886097,
+      "LPIPS": 0.143571,
+      "FID": 0.661791,
+      "FVD": 721447.7,
+      "intra_storage": 499445.76,
+      "flow_storage": 2702364.0,
+      "total_storage": 3201809.76,
+      "BPP": 0.127347
+    },
+    "HoneyBee": {
+      "CRF": "q4",
+      "PSNR": 18.854859,
+      "MS-SSIM": 0.433001,
+      "LPIPS": 0.322987,
+      "FID": 11.094058,
+      "FVD": 10971510.0,
+      "intra_storage": 622612.48,
+      "flow_storage": 2078412.0,
+      "total_storage": 2701024.48,
+      "BPP": 0.107429
+    },
+    "Jockey": {
+      "CRF": "q4",
+      "PSNR": 20.697355,
+      "MS-SSIM": 0.66796,
+      "LPIPS": 0.214249,
+      "FID": 0.925478,
+      "FVD": 23838020.0,
+      "intra_storage": 451696.64,
+      "flow_storage": 1420188.0,
+      "total_storage": 1871884.64,
+      "BPP": 0.074451
+    },
+    "ReadySteadyGo": {
+      "CRF": "q4",
+      "PSNR": 19.229003,
+      "MS-SSIM": 0.667087,
+      "LPIPS": 0.22998,
+      "FID": 3.216004,
+      "FVD": 18452180.0,
+      "intra_storage": 856125.44,
+      "flow_storage": 1550892.0,
+      "total_storage": 2407017.44,
+      "BPP": 0.095735
+    },
+    "ShakeNDry": {
+      "CRF": "q4",
+      "PSNR": 22.844642,
+      "MS-SSIM": 0.700282,
+      "LPIPS": 0.231363,
+      "FID": 1.526091,
+      "FVD": 3589742.0,
+      "intra_storage": 841349.12,
+      "flow_storage": 1551228.0,
+      "total_storage": 2392577.12,
+      "BPP": 0.095161
+    },
+    "YachtRide": {
+      "CRF": "q4",
+      "PSNR": 21.761636,
+      "MS-SSIM": 0.82577,
+      "LPIPS": 0.153513,
+      "FID": 0.808432,
+      "FVD": 1292943.0,
+      "intra_storage": 659066.88,
+      "flow_storage": 2067660.0,
+      "total_storage": 2726726.88,
+      "BPP": 0.108451
+    }
+  }
+  
