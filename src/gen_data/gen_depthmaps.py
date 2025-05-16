@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
-from torchvision import transforms
+import glob
 
 # Setup device and model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,21 +18,26 @@ if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
 else:
     transform = midas_transforms.small_transform
 
-# Root directory
-root = "/data2/local_datasets/vimeo_septuplet/sequences"
-target_size = (512, 512)
-batch_size = 4
 
 def process_batch(image_paths, save_paths):
     batch_tensors = []
-    # print(save_paths)
+    valid_save_paths = []
 
-    for img_path in image_paths:
+    for img_path, save_path in zip(image_paths, save_paths):
+        if os.path.exists(save_path):
+            print(f"Skipping {save_path} (already exists)")
+            continue
+
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, target_size)
         input_tensor = transform(img).squeeze(0)
         batch_tensors.append(input_tensor)
+        valid_save_paths.append(save_path)
+
+    if not batch_tensors:
+        print("All images in batch already processed.")
+        return
 
     input_batch = torch.stack(batch_tensors).to(device)
     print('input shape:', input_batch.shape)
@@ -46,35 +51,53 @@ def process_batch(image_paths, save_paths):
             align_corners=False
         )
 
-    prediction = prediction.squeeze(1) 
+    prediction = prediction.squeeze(1)
+
     for i, depth_map in enumerate(prediction):
         depth_np = depth_map.cpu().numpy()
         depth_norm = cv2.normalize(depth_np, None, 0, 255, cv2.NORM_MINMAX)
         depth_uint8 = depth_norm.astype(np.uint8)
-        cv2.imwrite(save_paths[i], depth_uint8)
-        print('saved')
+        cv2.imwrite(valid_save_paths[i], depth_uint8)
+        print(f"Saved: {valid_save_paths[i]}")
 
 
-# image_paths = []
-# # Walk through 'depth' folders and process in batches
-# for dirpath, dirnames, filenames in tqdm(os.walk(root), desc="Searching folders"):
-#     if os.path.basename(dirpath) == "depth":
-#         image_files = sorted([f for f in filenames if f.endswith(('.png', '.jpg'))])
-#         if not image_files:
-#             continue
-
-#         image_paths.extend([os.path.join(dirpath, f) for f in image_files])
+# Root directory
+base_dir = "/data/datasets/kinetics400/train/sequences_sampled"
+target_size = (512, 512)
+batch_size = 4
+image_paths = []
+save_paths = []
 
 
-# save_paths = [os.path.join(dirpath, os.path.splitext(f)[0] + "_depth.png") for f in image_paths]
-# print("*****************************************")
-# print(' image and save paths ', len(image_paths), len(save_paths))
-# print("*****************************************")
-# print(' image and save paths ', image_paths[0:10], save_paths[0:10])
+folders = glob.glob(base_dir+'/*/*')
+# Walk through 'depth' folders and collect paths
+for root in folders:
+    files = os.listdir(root)
+    if "r2.png" in files:
+        folder_image_paths = sorted([
+            os.path.join(root, f) for f in os.listdir(root)
+            if f.endswith(('.png', '.jpg')) and f not in ['r1.png', 'r2.png']
+        ])
+        image_paths.extend(folder_image_paths)
 
+        depth_dir = os.path.join(root, 'depth')
+        os.makedirs(depth_dir, exist_ok=True)  # safer than mkdir
 
+        folder_save_paths = [
+            os.path.join(depth_dir, os.path.splitext(os.path.basename(f))[0] + "_depth.png")
+            for f in folder_image_paths
+        ]
+        save_paths.extend(folder_save_paths)
 
-# for i in tqdm(range(0, len(image_paths), batch_size), desc=f"Processing {dirpath}"):
-#     batch_imgs = image_paths[i:i+batch_size]
-#     batch_saves = save_paths[i:i+batch_size]
-#     process_batch(batch_imgs, batch_saves)
+# Debug info
+print("*****************************************")
+print(' image and save paths ', len(image_paths), len(save_paths))
+print("*****************************************")
+print(' image and save paths ', image_paths[:10], save_paths[:10])
+
+# Batch processing
+for i in tqdm(range(0, len(image_paths), batch_size), desc=f"Processing"):
+    batch_imgs = image_paths[i:i+batch_size]
+    batch_saves = save_paths[i:i+batch_size]
+    process_batch(batch_imgs, batch_saves)
+
