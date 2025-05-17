@@ -10,37 +10,38 @@ from annotator.content import ContentDetector
 from .util import *
 from utils.flow_utils import load_flo_file  
 
-def process_flow_with_scaling(flo_path, target_shape=(128,128)):
-    """
-    Resize optical flow to a new shape and scale the motion vectors accordingly.
+def normalize_for_warping(flow, target_shape=(128,128)):
+    h, w = target_shape
+    flow[..., 0] /= (w / 2)
+    flow[..., 1] /= (h / 2)
+    return np.transpose(flow, (2, 0, 1))  # [2, H, W]
 
-    Args:
-        flow: np.ndarray of shape (H, W, 2) — optical flow in pixel units
-        target_shape: tuple (new_H, new_W) — desired output shape
-
-    Returns:
-        resized_flow: np.ndarray of shape (new_H, new_W, 2)
-    """
-    flow = load_flo_file(flo_path)
+def adaptive_weighted_downsample(flow, target_h=128, target_w=128):
     H, W = flow.shape[:2]
-    new_H, new_W = target_shape
+    output = np.zeros((target_h, target_w, 2), dtype=np.float32)
 
-    # Resize both flow channels
-    resized_flow = cv2.resize(flow, (new_W, new_H), interpolation=cv2.INTER_LINEAR)
+    # Compute bounds of each block
+    h_bounds = np.linspace(0, H, target_h + 1, dtype=int)
+    w_bounds = np.linspace(0, W, target_w + 1, dtype=int)
 
-    # Scale vector magnitudes to match new resolution
-    scale_x = new_W / W
-    scale_y = new_H / H
-    resized_flow[..., 0] *= scale_x
-    resized_flow[..., 1] *= scale_y
-    # Normalize flow to [-1, 1] for grid_sample or softsplat
-    resized_flow[..., 0] /= (new_W / 2)
-    resized_flow[..., 1] /= (new_H / 2)
+    for i in range(target_h):
+        for j in range(target_w):
+            h_start, h_end = h_bounds[i], h_bounds[i + 1]
+            w_start, w_end = w_bounds[j], w_bounds[j + 1]
 
-    # Transpose to [2, H, W]
-    normalized_flow = np.transpose(resized_flow, (2, 0, 1))  # [H, W, 2] → [2, H, W]
+            block = flow[h_start:h_end, w_start:w_end]
+            flat = block.reshape(-1, 2)
 
-    return normalized_flow.astype(np.float32)
+            # Weighted average by flow magnitude
+            mag = np.linalg.norm(flat, axis=1)
+            if mag.sum() > 0:
+                weighted_avg = (flat * mag[:, None]).sum(axis=0) / (mag.sum() + 1e-6)
+            else:
+                weighted_avg = flat.mean(axis=0)  # fallback
+
+            output[i, j] = weighted_avg
+
+    return output  # shape: (128,128,2)
 
 
 class UniDataset(Dataset):
@@ -145,7 +146,9 @@ class UniDataset(Dataset):
             global_conditions = np.concatenate(global_conditions)
 
         if flow_path is not None:
-            flow = process_flow_with_scaling(flow_path)
+            flow = load_flo_file(flow_path)
+            flow = adaptive_weighted_downsample(flow, target_h=128, target_w=128)
+            flow = normalize_for_warping(flow)
 
         return dict(jpg=image, txt=anno, local_conditions=local_conditions, flow=flow, global_conditions=global_conditions)
            
