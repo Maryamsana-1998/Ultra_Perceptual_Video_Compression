@@ -74,12 +74,21 @@ def load_and_average(csv_path: str, label: str) -> pd.Series:
     df["grid_label"] = label
     return df.groupby("grid_label", as_index=False).mean(numeric_only=True)
 
-
-
-def plot_metrics_comparison(avg_h264: pd.DataFrame, avg_h265: pd.DataFrame, avg_df: pd.DataFrame,
-                            metrics_to_plot, color_map, label_map,
+def plot_metrics_comparison(dataframes: dict,
+                            metrics_to_plot,
+                            color_map,
+                            label_map,
                             output_path="benchmark/plots/uvg_metrics_vs_bpp_gop8.png",
                             scatter_points=None):
+    """
+    Args:
+        dataframes: dict of label_key → pd.DataFrame (each must include "bpp" and metric columns)
+        metrics_to_plot: list of metrics to plot (e.g., ["PSNR", "MS-SSIM", "LPIPS"])
+        color_map: dict of label_key → color (e.g., {"h264": "blue", "plvc_hi": "green"})
+        label_map: dict of label_key → label name for legend (e.g., {"h264": "H.264", "plvc_hi": "PLVC High"})
+        output_path: where to save the final plot
+        scatter_points: optional dict like {"PSNR": (x, y), "name": "Some Point"}
+    """
     fig, axes = plt.subplots(2, 3, figsize=(16, 10))
     axes = axes.flatten()
 
@@ -87,13 +96,13 @@ def plot_metrics_comparison(avg_h264: pd.DataFrame, avg_h265: pd.DataFrame, avg_
         ax = axes[i]
 
         # Plot each method
-        ax.plot(avg_h264["bpp"], avg_h264[metric], marker='o', linestyle='-', color=color_map["h264"], label=label_map["h264"])
-        ax.plot(avg_h265["bpp"], avg_h265[metric], marker='s', linestyle='--', color=color_map["h265"], label=label_map["h265"])
-        ax.plot(avg_df["bpp"], avg_df[metric], marker='D', linestyle='-.', color=color_map["unicontrol"], label=label_map["unicontrol"])
-
-        # Optional: annotate UniControl points
-        for x, y in zip(avg_df["bpp"], avg_df[metric]):
-            ax.text(x, y, f"{y:.2f}", ha="center", va="bottom", fontsize=8)
+        for key, df in dataframes.items():
+            if metric in df.columns:
+                ax.plot(df["bpp"], df[metric], marker='o', linestyle='-', color=color_map.get(key, 'gray'),
+                        label=label_map.get(key, key))
+                # Annotate points (optional)
+                for x, y in zip(df["bpp"], df[metric]):
+                    ax.text(x, y, f"{y:.2f}", ha="center", va="bottom", fontsize=8)
 
         # Add scatter point if provided
         if scatter_points and metric in scatter_points:
@@ -107,7 +116,7 @@ def plot_metrics_comparison(avg_h264: pd.DataFrame, avg_h265: pd.DataFrame, avg_
         ax.grid(True)
         ax.legend(fontsize="small")
 
-    # Remove extra subplots
+    # Remove unused axes
     if len(metrics_to_plot) < len(axes):
         for j in range(len(metrics_to_plot), len(axes)):
             fig.delaxes(axes[j])

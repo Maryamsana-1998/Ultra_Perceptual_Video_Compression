@@ -187,3 +187,4 @@ benchmark/uvg_q*
 ckpt/*
 data/*.csv
 checkpoints/*
+benchmark/plvc_*

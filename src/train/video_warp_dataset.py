@@ -1,6 +1,7 @@
 import os
 import random
 import cv2
+import albumentations as A
 import numpy as np
 import glob
 from torch.utils.data import Dataset
@@ -54,7 +55,8 @@ class UniDataset(Dataset):
                  global_type_list,
                  keep_all_cond_prob,
                  drop_all_cond_prob,
-                 drop_each_cond_prob):
+                 drop_each_cond_prob,
+                 transform):
      
      self.local_type_list = local_type_list
      self.global_type_list = global_type_list
@@ -67,6 +69,30 @@ class UniDataset(Dataset):
      self.sequences = glob.glob(root_dir+'/*/*')
      self.file_ids, self.annos = read_anno(anno_path)
      self.global_processor = ContentDetector()
+     self.transform = transform
+     self.aug_targets = {'target_image': 'image', 'intra_frame': 'I_frame'}
+
+     if 'depth' in self.local_type_list:
+        self.aug_targets = {'target_image': 'image', 'intra_frame': 'I_frame', 'depth_frame': 'depth'} 
+
+     if 'r2' in self.global_type_list:
+         self.aug_targets = {'target_image': 'image', 'global_frame': 'global'} 
+
+
+
+     if self.transform:
+        self.augmentation = A.Compose([
+        # A.RandomCrop(height=512, width=512),
+        A.ColorJitter(
+            brightness=0.2,
+            contrast=0.2,
+            saturation=0.2,
+            hue=0.4,
+            p=1.0
+        ),
+        # A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT, p=1.0),
+        # A.Affine(scale=(0.8, 1.2), translate_percent=(0.2, 0.2), p=1.0),
+    ],  additional_targets=self.aug_targets,)
 
      self.video_frames = []
      for video_dir in self.sequences:
@@ -81,74 +107,88 @@ class UniDataset(Dataset):
         return len(self.video_frames)
         
     def __getitem__(self, index):
+        
         img_path = Path(self.video_frames[index])
         parts = os.path.normpath(img_path).split(os.sep)
         sequence_id = f"{parts[-3]}_{parts[-2]}"
         idx = self.file_ids.index(sequence_id)
         anno = self.annos[idx]
-        
-        try:
-            image = cv2.imread(str(img_path))
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = cv2.resize(image, (self.resolution, self.resolution))
-            image = (image.astype(np.float32) / 127.5) - 1.0
 
-        except Exception as e:
-            print('error: ',e,img_path)
-            raise e  
+        # === Load input image ===
+        image = cv2.imread(str(img_path))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        # needs to expanded
-        global_files = []
-        for global_type in self.global_type_list:
-            if global_type == 'r2':
-                global_files.append(img_path.with_name('r2.png'))
-
-        local_files = []
+        # === Prepare local condition paths ===
+        local_files = {}
         flow_path = None
         for local_type in self.local_type_list:
-           if local_type =='r1':  
-              local_files.append(img_path.with_name('r1.png'))
-           if local_type == 'flow':
-              flow_path  = img_path.parent / 'Flow' / img_path.name.replace('.png', '.flo')
-           if local_type == 'depth':
-              new_path = img_path.parent / 'depth' / img_path.name.replace('.png', '_depth.png')
-              local_files.append(new_path)
+            if local_type == 'r1':
+                local_files['r1'] = img_path.with_name('r1.png')
+            elif local_type == 'depth':
+                local_files['depth'] = img_path.parent / 'depth' / img_path.name.replace('.png', '_depth.png')
+            elif local_type == 'flow':
+                flow_path = img_path.parent / 'Flow' / img_path.name.replace('.png', '.flo')
 
+        # === Load r1 only if exists (for augmentation) ===
+        r1_img = None
+        if 'r1' in local_files and local_files['r1'].exists():
+            r1_img = cv2.imread(str(local_files['r1']))
+            r1_img = cv2.cvtColor(r1_img, cv2.COLOR_BGR2RGB)
 
-        local_conditions = []
-        for local_file in local_files: 
-            condition = cv2.imread(str(local_file))
-            try:    
-                condition = cv2.cvtColor(condition, cv2.COLOR_BGR2RGB)
-                condition = cv2.resize(condition, (self.resolution, self.resolution))
-                condition = condition.astype(np.float32) / 255.0
-                local_conditions.append(condition)
-            except Exception as e:
-                print('missing', e,  local_file)
-                raise e
-            
+        # === Apply augmentations only on image + r1 ===
+        if r1_img is not None and self.transform:
+            augmented = self.augmentation(image=image, r1=r1_img)
+            image = augmented['image']
+            local_condition_map = {'r1': augmented['r1']}
+        else:
+            image = cv2.resize(image, (self.resolution, self.resolution))
+            local_condition_map = {}
+
+        image = (image.astype(np.float32) / 127.5) - 1.0  # Normalize to [-1,1]
+
+        # === Load depth (no augmentation) ===
+        if 'depth' in local_files and local_files['depth'].exists():
+            depth_img = cv2.imread(str(local_files['depth']))
+            depth_img = cv2.cvtColor(depth_img, cv2.COLOR_BGR2RGB)
+            depth_img = cv2.resize(depth_img, (self.resolution, self.resolution))
+            depth_img = depth_img.astype(np.float32) / 255.0
+            local_condition_map['depth'] = depth_img
+
+        # === Format local conditions ===
+        local_conditions = list(local_condition_map.values())
+        local_conditions = keep_and_drop(local_conditions, self.keep_all_cond_prob,
+                                        self.drop_all_cond_prob, self.drop_each_cond_prob)
+        if len(local_conditions):
+            local_conditions = np.concatenate(local_conditions, axis=2)
+
+        # === Global conditions (not augmented) ===
         global_conditions = []
-        for global_file in global_files:
-            global_img = cv2.imread(global_file)
-            global_img = cv2.cvtColor(global_img, cv2.COLOR_BGR2RGB)
-            condition = self.global_processor(global_img)
-            global_conditions.append(condition)
+        for global_type in self.global_type_list:
+            if global_type == 'r2':
+                r2_path = img_path.with_name('r2.png')
+                if r2_path.exists():
+                    r2_img = cv2.imread(str(r2_path))
+                    r2_img = cv2.cvtColor(r2_img, cv2.COLOR_BGR2RGB)
+                    global_conditions.append(self.global_processor(r2_img))
+        global_conditions = keep_and_drop(global_conditions, self.keep_all_cond_prob,
+                                        self.drop_all_cond_prob, self.drop_each_cond_prob)
+        if len(global_conditions):
+            global_conditions = np.concatenate(global_conditions)
+
+        # === Flow (downsample + normalize) ===
+        flow = None
+        if flow_path and flow_path.exists():
+            flow = load_flo_file(flow_path)
+            flow = adaptive_weighted_downsample(flow, target_h=self.resolution, target_w=self.resolution)
+            flow = normalize_for_warping(flow)
 
         if random.random() < self.drop_txt_prob:
             anno = ''
-        
-        local_conditions = keep_and_drop(local_conditions, self.keep_all_cond_prob, self.drop_all_cond_prob, self.drop_each_cond_prob)
-        global_conditions = keep_and_drop(global_conditions, self.keep_all_cond_prob, self.drop_all_cond_prob, self.drop_each_cond_prob)
-        
-        if len(local_conditions) != 0:
-            local_conditions = np.concatenate(local_conditions, axis=2)
-        if len(global_conditions) != 0:
-            global_conditions = np.concatenate(global_conditions)
 
-        if flow_path is not None:
-            flow = load_flo_file(flow_path)
-            flow = adaptive_weighted_downsample(flow, target_h=128, target_w=128)
-            flow = normalize_for_warping(flow)
-
-        return dict(jpg=image, txt=anno, local_conditions=local_conditions, flow=flow, global_conditions=global_conditions)
-           
+        return dict(
+            jpg=image,
+            txt=anno,
+            local_conditions=local_conditions if len(local_conditions) else None,
+            global_conditions=global_conditions if len(global_conditions) else None,
+            flow=flow
+        )
